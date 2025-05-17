@@ -2,34 +2,30 @@
 // 引入資料庫連接文件
 require_once 'db_connection.php';
 
-// 取得教師基本資料
-$sql_teacher = "SELECT * FROM teacher_info WHERE id = 1";
-$result_teacher = $conn->query($sql_teacher);
-$teacher = $result_teacher->fetch_assoc();
+// 取得教授基本資料
+$sql_professor = "SELECT * FROM professor WHERE pro_ID = '1'";
+$result_professor = $conn->query($sql_professor);
+$professor = $result_professor->fetch_assoc();
 
 // 取得學歷
-$sql_education = "SELECT * FROM education WHERE teacher_id = 1 ORDER BY id";
+$sql_education = "SELECT * FROM education WHERE pro_ID = '1' ORDER BY edu_ID";
 $result_education = $conn->query($sql_education);
 
 // 取得專長
-$sql_specialties = "SELECT * FROM specialties WHERE teacher_id = 1 ORDER BY id";
-$result_specialties = $conn->query($sql_specialties);
+$sql_expertise = "SELECT * FROM expertise WHERE pro_ID = '1' ORDER BY expertise_ID";
+$result_expertise = $conn->query($sql_expertise);
 
 // 取得期刊論文
-$sql_journals = "SELECT * FROM journal_papers WHERE teacher_id = 1 ORDER BY publish_date DESC";
-$result_journals = $conn->query($sql_journals);
+$sql_journal = "SELECT * FROM journal WHERE pro_ID = '1' ORDER BY date DESC";
+$result_journal = $conn->query($sql_journal);
 
 // 取得會議論文
-$sql_conferences = "SELECT * FROM conference_papers WHERE teacher_id = 1 ORDER BY publish_date DESC";
-$result_conferences = $conn->query($sql_conferences);
+$sql_conference = "SELECT * FROM conference WHERE pro_ID = '1' ORDER BY date DESC";
+$result_conference = $conn->query($sql_conference);
 
-// 取得校內經歷
-$sql_internal_exp = "SELECT * FROM experiences WHERE teacher_id = 1 AND is_internal = TRUE";
-$result_internal_exp = $conn->query($sql_internal_exp);
-
-// 取得校外經歷
-$sql_external_exp = "SELECT * FROM experiences WHERE teacher_id = 1 AND is_internal = FALSE";
-$result_external_exp = $conn->query($sql_external_exp);
+// 取得經歷
+$sql_experience = "SELECT * FROM experience WHERE pro_ID = '1' ORDER BY experience_ID";
+$result_experience = $conn->query($sql_experience);
 
 // 關閉資料庫連接 
 $conn->close();
@@ -39,7 +35,7 @@ $conn->close();
 <html lang="zh-Hant-TW">
 <head>
     <meta charset="UTF-8">
-    <title><?php echo $teacher['name']; ?>老師介紹</title>
+    <title><?php echo $professor['name']; ?>教授介紹</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -49,17 +45,17 @@ $conn->close();
 </div>
 
 <!-- 頁面標題與職稱 -->
-<h1><?php echo $teacher['name']; ?></h1>
-<p><strong><?php echo $teacher['title']; ?></strong></p>
+<h1><?php echo $professor['name']; ?></h1>
+<p><strong><?php echo $professor['department']; ?></strong></p>
 
 <!-- 教師簡介區塊（含個人照片） -->
 <div class="section intro-wrapper">
     <div class="intro-content">
         <p><strong>簡介：</strong></p>
-        <p><?php echo $teacher['intro']; ?></p>
+        <p><?php echo $professor['introduction']; ?></p>
     </div>
     <div class="intro-photo">
-        <img src="<?php echo $teacher['photo_path']; ?>" alt="<?php echo $teacher['name']; ?>照片">
+        <img src="<?php echo $professor['photo']; ?>" alt="<?php echo $professor['name']; ?>照片">
     </div>
 </div>
 
@@ -68,7 +64,7 @@ $conn->close();
     <p><strong>學歷：</strong></p>
     <ul>
         <?php while($education = $result_education->fetch_assoc()): ?>
-        <li><?php echo $education['school'] . ' ' . $education['department'] . ' ' . $education['degree']; ?></li>
+        <li><?php echo $education['department'] . ' ' . $education['degree']; ?></li>
         <?php endwhile; ?>
     </ul>
 </div>
@@ -77,31 +73,22 @@ $conn->close();
 <div class="section">
     <p><strong>專長：</strong></p>
     <ul>
-        <?php while($specialty = $result_specialties->fetch_assoc()): ?>
-        <li><?php echo $specialty['specialty'] . '（' . $specialty['specialty_en'] . '）'; ?></li>
+        <?php while($expertise = $result_expertise->fetch_assoc()): ?>
+        <li><?php echo $expertise['item']; ?></li>
         <?php endwhile; ?>
     </ul>
 </div>
 
-<!-- 聯絡資訊區塊 -->
-<div class="section">
-    <p><strong>聯絡資訊：</strong></p>
-    <ul class="contact-info">
-        <li><?php echo $teacher['email']; ?></li>
-        <li><?php echo $teacher['phone']; ?></li>
-    </ul>
-</div>
-
-<!-- 發表期刊論文（ 可收合區塊） -->
+<!-- 發表期刊論文（可收合區塊） -->
 <div class="section">
     <details open>
-        <summary class="category-title">發表期刊論文（<?php echo $result_journals->num_rows; ?>）</summary>
+        <summary class="category-title">發表期刊論文（<?php echo $result_journal->num_rows; ?>）</summary>
         <ol>
-            <?php while($paper = $result_journals->fetch_assoc()): ?>
+            <?php while($paper = $result_journal->fetch_assoc()): ?>
             <li>
                 <?php
-                echo $paper['title'] . ' <i>' . $paper['journal'] . '</i>, ' . $paper['publish_date'];
-                if(!empty($paper['type'])) echo '. (' . $paper['type'] . ')';
+                echo $paper['title'] . ' <i>' . $paper['name'] . '</i>, ' . $paper['date'];
+                if(!empty($paper['issue'])) echo '. (' . $paper['issue'] . ')';
                 ?>
             </li>
             <?php endwhile; ?>
@@ -112,29 +99,23 @@ $conn->close();
 <!-- 會議論文(可收合區塊） -->
 <div class="section">
     <details open>
-        <summary class="category-title">會議論文（<?php echo $result_conferences->num_rows; ?>）</summary>
+        <summary class="category-title">會議論文（<?php echo $result_conference->num_rows; ?>）</summary>
         <ol>
-            <?php while($paper = $result_conferences->fetch_assoc()): ?>
+            <?php while($paper = $result_conference->fetch_assoc()): ?>
             <li>
-                <?php echo $paper['title'] . ' <i>' . $paper['conference'] . '</i>, ' . $paper['publish_date']; ?>
+                <?php echo $paper['title'] . ' <i>' . $paper['name'] . '</i>, ' . $paper['date']; ?>
             </li>
             <?php endwhile; ?>
         </ol>
     </details>
 </div>
 
-<!-- 校內與校外經歷 -->
+<!-- 經歷 -->
 <div class="section">
-    <p><strong>校內經歷：</strong></p>
+    <p><strong>經歷：</strong></p>
     <ul>
-        <?php while($exp = $result_internal_exp->fetch_assoc()): ?>
-        <li><?php echo $exp['organization'] . ' ' . $exp['position']; ?></li>
-        <?php endwhile; ?>
-    </ul>
-    <p><strong>校外經歷：</strong></p>
-    <ul>
-        <?php while($exp = $result_external_exp->fetch_assoc()): ?>
-        <li><?php echo $exp['organization'] . ' ' . $exp['position']; ?></li>
+        <?php while($exp = $result_experience->fetch_assoc()): ?>
+        <li><?php echo $exp['department'] . ' ' . $exp['position']; ?></li>
         <?php endwhile; ?>
     </ul>
 </div>
