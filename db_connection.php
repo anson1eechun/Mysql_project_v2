@@ -1,9 +1,9 @@
 <?php
 // 資料庫連接設定
 $servername = "140.134.53.57"; // 改為你的MySQL伺服器地址
-$username = "D1378388"; // 資料庫用戶名
-$password = "$3Jqmsrhn"; // 資料庫密碼
-$dbname = "D1378388"; // 資料庫名稱
+$username = "D1371716"; // 資料庫用戶名
+$password = "$Fwfqgr9P"; // 資料庫密碼
+$dbname = "D1371716"; // 資料庫名稱
 
 $conn = new mysqli($servername, $username, $password, $dbname);
 
@@ -17,3 +17,5 @@ $conn->set_charset("utf8mb4");
 ?>
 
 
+//D1371716
+//$Fwfqgr9P

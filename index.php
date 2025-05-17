@@ -3,126 +3,160 @@
 require_once 'db_connection.php';
 
 // 取得教授基本資料
-$sql_professor = "SELECT * FROM professor WHERE pro_ID = '1'";
-$result_professor = $conn->query($sql_professor);
-$professor = $result_professor->fetch_assoc();
+$pro_ID = 'A001';
 
-// 取得學歷
-$sql_education = "SELECT * FROM education WHERE pro_ID = '1' ORDER BY edu_ID";
-$result_education = $conn->query($sql_education);
+// 獲取教授基本資料
+$sql = "SELECT * FROM professor WHERE pro_ID = '$pro_ID'";
+$result = $conn->query($sql);
+$professor = $result->fetch_assoc();
 
-// 取得專長
-$sql_expertise = "SELECT * FROM expertise WHERE pro_ID = '1' ORDER BY expertise_ID";
-$result_expertise = $conn->query($sql_expertise);
-
-// 取得期刊論文
-$sql_journal = "SELECT * FROM journal WHERE pro_ID = '1' ORDER BY date DESC";
-$result_journal = $conn->query($sql_journal);
-
-// 取得會議論文
-$sql_conference = "SELECT * FROM conference WHERE pro_ID = '1' ORDER BY date DESC";
-$result_conference = $conn->query($sql_conference);
-
-// 取得經歷
-$sql_experience = "SELECT * FROM experience WHERE pro_ID = '1' ORDER BY experience_ID";
-$result_experience = $conn->query($sql_experience);
-
-// 關閉資料庫連接 
-$conn->close();
+if ($professor) {
 ?>
-
 <!DOCTYPE html>
 <html lang="zh-Hant-TW">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $professor['name']; ?>教授介紹</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<!-- 左上角 Logo -->
-<div class="logo">
-    <img src="title.png" alt="網站標誌">
-</div>
-
-<!-- 頁面標題與職稱 -->
-<h1><?php echo $professor['name']; ?></h1>
-<p><strong><?php echo $professor['department']; ?></strong></p>
-
-<!-- 教師簡介區塊（含個人照片） -->
-<div class="section intro-wrapper">
-    <div class="intro-content">
-        <p><strong>簡介：</strong></p>
-        <p><?php echo $professor['introduction']; ?></p>
-    </div>
-    <div class="intro-photo">
-        <img src="<?php echo $professor['photo']; ?>" alt="<?php echo $professor['name']; ?>照片">
-    </div>
-</div>
-
-<!-- 學歷區塊 -->
-<div class="section">
-    <p><strong>學歷：</strong></p>
-    <ul>
-        <?php while($education = $result_education->fetch_assoc()): ?>
-        <li><?php echo $education['department'] . ' ' . $education['degree']; ?></li>
-        <?php endwhile; ?>
-    </ul>
-</div>
-
-<!-- 專長區塊 -->
-<div class="section">
-    <p><strong>專長：</strong></p>
-    <ul>
-        <?php while($expertise = $result_expertise->fetch_assoc()): ?>
-        <li><?php echo $expertise['item']; ?></li>
-        <?php endwhile; ?>
-    </ul>
-</div>
-
-<!-- 發表期刊論文（可收合區塊） -->
-<div class="section">
-    <details open>
-        <summary class="category-title">發表期刊論文（<?php echo $result_journal->num_rows; ?>）</summary>
-        <ol>
-            <?php while($paper = $result_journal->fetch_assoc()): ?>
-            <li>
+    <div class="container">
+        <div class="logo">
+            <img src="title2.png" alt="Logo">
+        </div>
+        
+        <h1><?php echo $professor['name']; ?>教授介紹</h1>
+        
+        <div class="section">
+            <div class="intro-wrapper">
+                <div class="intro-content">
+                    <p><?php echo $professor['introduction']; ?></p>
+                </div>
+                <div class="intro-photo">
+                    <img src="uploads/<?php echo $professor['photo']; ?>" alt="<?php echo $professor['name']; ?>">
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>學歷</h2>
+            <ul>
                 <?php
-                echo $paper['title'] . ' <i>' . $paper['name'] . '</i>, ' . $paper['date'];
-                if(!empty($paper['issue'])) echo '. (' . $paper['issue'] . ')';
+                $sql = "SELECT * FROM education WHERE pro_ID = '$pro_ID'";
+                $result = $conn->query($sql);
+                while ($row = $result->fetch_assoc()) {
+                    echo "<li>{$row['department']} {$row['degree']}</li>";
+                }
                 ?>
-            </li>
-            <?php endwhile; ?>
-        </ol>
-    </details>
-</div>
-
-<!-- 會議論文(可收合區塊） -->
-<div class="section">
-    <details open>
-        <summary class="category-title">會議論文（<?php echo $result_conference->num_rows; ?>）</summary>
-        <ol>
-            <?php while($paper = $result_conference->fetch_assoc()): ?>
-            <li>
-                <?php echo $paper['title'] . ' <i>' . $paper['name'] . '</i>, ' . $paper['date']; ?>
-            </li>
-            <?php endwhile; ?>
-        </ol>
-    </details>
-</div>
-
-<!-- 經歷 -->
-<div class="section">
-    <p><strong>經歷：</strong></p>
-    <ul>
-        <?php while($exp = $result_experience->fetch_assoc()): ?>
-        <li><?php echo $exp['department'] . ' ' . $exp['position']; ?></li>
-        <?php endwhile; ?>
-    </ul>
-</div>
-
-<!-- 最下方新增圖片 -->
-<div class="image-gallery">
-    <img src="title2.png" alt="底部圖片">
-</div>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>專長</h2>
+            <ul>
+                <?php
+                $sql = "SELECT * FROM expertise WHERE pro_ID = '$pro_ID'";
+                $result = $conn->query($sql);
+                while ($row = $result->fetch_assoc()) {
+                    echo "<li>{$row['item']}</li>";
+                }
+                ?>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>期刊論文</h2>
+            <details>
+                <summary>發表期刊論文</summary>
+                <ul>
+                    <?php
+                    $sql = "SELECT * FROM journal WHERE pro_ID = '$pro_ID'";
+                    $result = $conn->query($sql);
+                    while ($row = $result->fetch_assoc()) {
+                        echo "<li>{$row['title']} ({$row['date']})</li>";
+                    }
+                    ?>
+                </ul>
+            </details>
+        </div>
+        
+        <div class="section">
+            <h2>會議論文</h2>
+            <details>
+                <summary>發表會議論文</summary>
+                <ul>
+                    <?php
+                    $sql = "SELECT * FROM conference WHERE pro_ID = '$pro_ID'";
+                    $result = $conn->query($sql);
+                    while ($row = $result->fetch_assoc()) {
+                        echo "<li>{$row['title']} ({$row['date']})</li>";
+                    }
+                    ?>
+                </ul>
+            </details>
+        </div>
+        
+        <div class="section">
+            <h2>經歷</h2>
+            <ul>
+                <?php
+                $sql = "SELECT * FROM experience WHERE pro_ID = '$pro_ID'";
+                $result = $conn->query($sql);
+                while ($row = $result->fetch_assoc()) {
+                    echo "<li>{$row['department']} {$row['position']}</li>";
+                }
+                ?>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>課程資訊</h2>
+            <div class="course-table-wrapper">
+                <table class="course-table">
+                    <thead>
+                        <tr>
+                            <th>課程名稱</th>
+                            <th>上課時間</th>
+                            <th>上課地點</th>
+                            <th>授課班級</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $sql = "SELECT * FROM courses WHERE pro_ID = '$pro_ID'";
+                        $result = $conn->query($sql);
+                        while ($row = $result->fetch_assoc()) {
+                            echo "<tr>";
+                            echo "<td>{$row['name']}</td>";
+                            echo "<td>{$row['time']}</td>";
+                            echo "<td>{$row['location']}</td>";
+                            echo "<td>{$row['class_name']}</td>";
+                            echo "</tr>";
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>聯絡資訊</h2>
+            <ul class="contact-info">
+                <li>信箱：<?php echo $professor['email'] ?? '未提供'; ?></li>
+                <li>分機：<?php echo $professor['extension'] ?? '未提供'; ?></li>
+            </ul>
+        </div>
+        
+        <div class="image-gallery">
+            <img src="title.png" alt="Footer Image">
+        </div>
+    </div>
 </body>
 </html>
+<?php
+} else {
+    echo "<p>找不到教授資料</p>";
+}
+?>

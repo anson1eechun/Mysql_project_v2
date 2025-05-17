@@ -156,7 +156,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 // 查詢教授基本資料
-$pro_ID = isset($_GET['id']) ? $_GET['id'] : '1'; // 預設顯示ID為1的教授
+$pro_ID = isset($_GET['id']) ? $_GET['id'] : 'A001'; // 預設顯示ID為A001的教授
 $sql_professor = "SELECT * FROM professor WHERE pro_ID = '$pro_ID'";
 $result_professor = $conn->query($sql_professor);
 $professor = $result_professor->fetch_assoc();
@@ -279,20 +279,20 @@ $result_experience = $conn->query($sql_experience);
     </style>
 </head>
 <body>
-<div class="container">
+    <div class="container">
     <h1>教授資料管理系統</h1>
 
-    <?php if(isset($message)): ?>
-        <div class="message"><?php echo $message; ?></div>
-    <?php endif; ?>
+        <?php if(isset($message)): ?>
+            <div class="message"><?php echo $message; ?></div>
+        <?php endif; ?>
 
-    <?php if(isset($error)): ?>
-        <div class="error"><?php echo $error; ?></div>
-    <?php endif; ?>
+        <?php if(isset($error)): ?>
+            <div class="error"><?php echo $error; ?></div>
+        <?php endif; ?>
 
     <!-- 基本資料表單 -->
-    <div class="section">
-        <h2>基本資料</h2>
+        <div class="section">
+            <h2>基本資料</h2>
         <form method="post" enctype="multipart/form-data">
             <input type="hidden" name="pro_ID" value="<?php echo $professor['pro_ID']; ?>">
             <div>
@@ -311,12 +311,12 @@ $result_experience = $conn->query($sql_experience);
                 <label>照片：</label>
                 <input type="file" name="photo" accept="image/*">
             </div>
-            <button type="submit" name="update_basic">更新基本資料</button>
-        </form>
-    </div>
+                <button type="submit" name="update_basic">更新基本資料</button>
+            </form>
+        </div>
 
     <!-- 學歷表單 -->
-    <div class="section">
+        <div class="section">
         <h2>學歷</h2>
         <form method="post">
             <input type="hidden" name="pro_ID" value="<?php echo $professor['pro_ID']; ?>">
@@ -331,31 +331,31 @@ $result_experience = $conn->query($sql_experience);
             <button type="submit" name="add_education">新增學歷</button>
         </form>
 
-        <table>
-            <tr>
+            <table>
+                <tr>
                 <th>系所</th>
-                <th>學位</th>
-                <th>操作</th>
-            </tr>
+                    <th>學位</th>
+                    <th>操作</th>
+                </tr>
             <?php while($education = $result_education->fetch_assoc()): ?>
-            <tr>
+                <tr>
                 <td><?php echo $education['department']; ?></td>
                 <td><?php echo $education['degree']; ?></td>
-                <td>
+                    <td>
                     <form method="post" style="display: inline;">
-                        <input type="hidden" name="table" value="education">
+                            <input type="hidden" name="table" value="education">
                         <input type="hidden" name="id_field" value="edu_ID">
                         <input type="hidden" name="id_value" value="<?php echo $education['edu_ID']; ?>">
                         <button type="submit" name="delete_data" class="delete-btn">刪除</button>
-                    </form>
-                </td>
-            </tr>
-            <?php endwhile; ?>
-        </table>
-    </div>
+                        </form>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            </table>
+        </div>
 
     <!-- 專長表單 -->
-    <div class="section">
+        <div class="section">
         <h2>專長</h2>
         <form method="post">
             <input type="hidden" name="pro_ID" value="<?php echo $professor['pro_ID']; ?>">
@@ -366,11 +366,11 @@ $result_experience = $conn->query($sql_experience);
             <button type="submit" name="add_expertise">新增專長</button>
         </form>
 
-        <table>
-            <tr>
+            <table>
+                <tr>
                 <th>專長項目</th>
-                <th>操作</th>
-            </tr>
+                    <th>操作</th>
+                </tr>
             <?php while($expertise = $result_expertise->fetch_assoc()): ?>
             <tr>
                 <td><?php echo $expertise['item']; ?></td>
@@ -380,15 +380,15 @@ $result_experience = $conn->query($sql_experience);
                         <input type="hidden" name="id_field" value="expertise_ID">
                         <input type="hidden" name="id_value" value="<?php echo $expertise['expertise_ID']; ?>">
                         <button type="submit" name="delete_data" class="delete-btn">刪除</button>
-                    </form>
-                </td>
-            </tr>
-            <?php endwhile; ?>
-        </table>
-    </div>
+                        </form>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            </table>
+        </div>
 
     <!-- 期刊論文表單 -->
-    <div class="section">
+        <div class="section">
         <h2>期刊論文</h2>
         <form method="post">
             <input type="hidden" name="pro_ID" value="<?php echo $professor['pro_ID']; ?>">
@@ -419,20 +419,20 @@ $result_experience = $conn->query($sql_experience);
             <button type="submit" name="add_journal">新增期刊論文</button>
         </form>
 
-        <table>
-            <tr>
+            <table>
+                <tr>
                 <th>作者</th>
                 <th>論文標題</th>
                 <th>期刊名稱</th>
                 <th>卷期</th>
                 <th>日期</th>
                 <th>頁數</th>
-                <th>操作</th>
-            </tr>
+                    <th>操作</th>
+                </tr>
             <?php while($journal = $result_journal->fetch_assoc()): ?>
-            <tr>
+                <tr>
                 <td><?php echo $journal['jour_character']; ?></td>
-                <td><?php echo $journal['title']; ?></td>
+                    <td><?php echo $journal['title']; ?></td>
                 <td><?php echo $journal['name']; ?></td>
                 <td><?php echo $journal['issue']; ?></td>
                 <td><?php echo $journal['date']; ?></td>
@@ -443,11 +443,11 @@ $result_experience = $conn->query($sql_experience);
                         <input type="hidden" name="id_field" value="jour_ID">
                         <input type="hidden" name="id_value" value="<?php echo $journal['jour_ID']; ?>">
                         <button type="submit" name="delete_data" class="delete-btn">刪除</button>
-                    </form>
-                </td>
-            </tr>
-            <?php endwhile; ?>
-        </table>
+                        </form>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            </table>
     </div>
 
     <!-- 會議論文表單 -->
@@ -482,16 +482,16 @@ $result_experience = $conn->query($sql_experience);
             <button type="submit" name="add_conference">新增會議論文</button>
         </form>
 
-        <table>
-            <tr>
+            <table>
+                <tr>
                 <th>作者</th>
                 <th>論文標題</th>
                 <th>會議名稱</th>
                 <th>頁數</th>
                 <th>日期</th>
                 <th>地點</th>
-                <th>操作</th>
-            </tr>
+                    <th>操作</th>
+                </tr>
             <?php while($conference = $result_conference->fetch_assoc()): ?>
             <tr>
                 <td><?php echo $conference['conf_character']; ?></td>
@@ -506,12 +506,12 @@ $result_experience = $conn->query($sql_experience);
                         <input type="hidden" name="id_field" value="conf_ID">
                         <input type="hidden" name="id_value" value="<?php echo $conference['conf_ID']; ?>">
                         <button type="submit" name="delete_data" class="delete-btn">刪除</button>
-                    </form>
-                </td>
-            </tr>
-            <?php endwhile; ?>
-        </table>
-    </div>
+                        </form>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            </table>
+                </div>
 
     <!-- 經歷表單 -->
     <div class="section">
@@ -529,17 +529,17 @@ $result_experience = $conn->query($sql_experience);
             <div>
                 <label>職位：</label>
                 <input type="text" name="position" required>
-            </div>
+        </div>
             <button type="submit" name="add_experience">新增經歷</button>
-        </form>
+                        </form>
 
-        <table>
-            <tr>
+            <table>
+                <tr>
                 <th>經歷類別</th>
-                <th>單位</th>
+                    <th>單位</th>
                 <th>職位</th>
-                <th>操作</th>
-            </tr>
+                    <th>操作</th>
+                </tr>
             <?php while($experience = $result_experience->fetch_assoc()): ?>
             <tr>
                 <td><?php echo $experience['sort']; ?></td>
@@ -551,11 +551,11 @@ $result_experience = $conn->query($sql_experience);
                         <input type="hidden" name="id_field" value="experience_ID">
                         <input type="hidden" name="id_value" value="<?php echo $experience['experience_ID']; ?>">
                         <button type="submit" name="delete_data" class="delete-btn">刪除</button>
-                    </form>
-                </td>
-            </tr>
-            <?php endwhile; ?>
-        </table>
+                        </form>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            </table>
     </div>
 </div>
 </body>
