@@ -1,123 +1,113 @@
+/* 基本樣式 */
 body {
     font-family: 'Noto Sans TC', sans-serif;
-    background: linear-gradient(to bottom right, #f0f4f8, #ffffff);
-    color: #333;
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 40px 20px;
-    line-height: 1.8;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
 }
 
-/* 左上角 Logo（改為滿版白底條） */
+/* Logo 樣式 */
 .logo {
-    background-color: #fff;    /* 白底 */
-    padding: 5px;             /* 上下左右各 20px */
-    margin-bottom: 20px;       /* 與下方內容間距 */
-    text-align: left;          /* 內容靠左 */
-    box-sizing: border-box;    /* 內距包含在寬度計算內 */
+    margin-bottom: 20px;
 }
 
-/* Logo 圖片本身 */
 .logo img {
-    display: inline-block;     /* 讓圖片靠左排列 */
-    margin: 0;                 /* 取消任何預設外距 */
-    max-width: 250px;          /* 圖片最大寬度，可調整 */
+    max-width: 200px;
     height: auto;
 }
+
 /* 標題樣式 */
 h1 {
-    font-size: 36px;
-    margin-bottom: 0.2em;
-    color: #003366;
+    color: #333;
+    margin-bottom: 10px;
 }
-h2 {
-    font-size: 24px;
-    margin-top: 1.5em;
-    color: #005bac;
+
+/* 區塊樣式 */
+.section {
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-strong {
-    color: #005bac;
+
+/* 簡介區塊 */
+.intro-wrapper {
+    display: flex;
+    gap: 20px;
+}
+
+.intro-content {
+    flex: 2;
+}
+
+.intro-photo {
+    flex: 1;
+}
+
+.intro-photo img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
 }
 
 /* 列表樣式 */
 ul {
-    padding-left: 20px;
+    list-style-type: none;
+    padding-left: 0;
 }
+
 li {
-    margin-bottom: 0.5em;
-}
-
-/* 區塊樣式設定，包含背景色與陰影 */
-.section {
-    margin-bottom: 2em;
-    background-color: #f9f9fb;
-    padding: 25px;
-    border-radius: 10px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-}
-
-/* 簡介區塊左右分欄排版 */
-.intro-wrapper {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: flex-start;
-}
-.intro-content {
-    width: 65%;
-}
-.intro-photo {
-    width: 30%;
-    text-align: right;
-}
-.intro-photo img {
-    width: 240px;
     margin-bottom: 10px;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* 聯絡資訊列表前加上圖示 */
-.contact-info li::before {
-    content: '📧';
-    margin-right: 6px;
-}
-.contact-info li:nth-child(2)::before {
-    content: '📞';
+/* 聯絡資訊樣式 */
+.contact-info li {
+    display: inline-block;
+    margin-right: 20px;
 }
 
-/* 編號列表樣式 */
-ol {
-    padding-left: 20px;
-}
-
-/* 摘要分類標題樣式 */
-.category-title {
-    font-weight: bold;
-    font-size: 20px;
-    margin-bottom: 0.5em;
-    color: #444;
-}
-
-/* 摺疊 details 標題樣式 */
-details summary {
-    cursor: pointer;
-    font-weight: bold;
-    margin-bottom: 0.5em;
-}
+/* 論文區塊樣式 */
 details {
-    margin-top: 10px;
+    margin-bottom: 15px;
 }
 
-/* 圖片庫樣式（最下方圖片） */
-.image-gallery {
-    margin-top: 2em;
-    text-align: center;
+summary {
+    cursor: pointer;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
 }
+
+summary:hover {
+    background-color: #e9ecef;
+}
+
+/* 底部圖片樣式 */
+.image-gallery {
+    text-align: center;
+    margin-top: 30px;
+}
+
 .image-gallery img {
     max-width: 100%;
     height: auto;
-    border-radius: 10px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .intro-wrapper {
+        flex-direction: column;
+    }
+    
+    .intro-photo {
+        order: -1;
+    }
+    
+    .intro-photo img {
+        max-width: 200px;
+        margin: 0 auto;
+        display: block;
+    }
 }
