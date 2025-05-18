@@ -21,9 +21,20 @@ try {
         throw new Exception("連接失敗: " . $conn->connect_error);
     }
 } catch (Exception $e) {
-    die("資料庫連接錯誤：" . $e->getMessage());
+    // 記錄錯誤
+    error_log("資料庫連接錯誤：" . $e->getMessage());
+    // 顯示友好的錯誤訊息
+    die("系統暫時無法連接到資料庫，請稍後再試。");
 }
 
 // 設定時區
 date_default_timezone_set('Asia/Taipei');
+
+// 設定會話
+session_start();
+
+// 設定安全標頭
+header("X-Frame-Options: DENY");
+header("X-XSS-Protection: 1; mode=block");
+header("X-Content-Type-Options: nosniff");
 ?> 

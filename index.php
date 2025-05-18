@@ -1,6 +1,6 @@
 <?php
 // 引入資料庫連接文件
-require_once 'db_connection.php';
+require_once 'config.php';
 
 // 取得教授基本資料
 $pro_ID = 'A001';
