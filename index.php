@@ -114,6 +114,7 @@ if ($professor) {
         <div class="section">
             <h2>課程資訊</h2>
             <div class="course-table-wrapper">
+                <a href="schedule.php" class="schedule-link">查看完整課表</a>
                 <table class="course-table">
                     <thead>
                         <tr>
