@@ -5,8 +5,8 @@ ini_set('display_errors', 1);
 
 // 資料庫連接設定
 define('DB_SERVER', 'localhost');
-define('DB_USERNAME', 'D1371716');
-define('DB_PASSWORD', '$Fwfqgr9P');
+define('DB_USERNAME', 'root');  //本地端
+define('DB_PASSWORD', '12345678');
 define('DB_NAME', 'D1371716');
 
 // 建立資料庫連接
