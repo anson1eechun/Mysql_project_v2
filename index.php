@@ -35,7 +35,7 @@ if ($professor) {
                     <p><?php echo $professor['introduction']; ?></p>
                 </div>
                 <div class="intro-photo">
-                    <img src="uploads/<?php echo $professor['photo']; ?>" alt="<?php echo $professor['name']; ?>">
+                    <img src=<?php echo $professor['photo']; ?>" alt="<?php echo $professor['name']; ?>">
                 </div>
             </div>
         </div>
