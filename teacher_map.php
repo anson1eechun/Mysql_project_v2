@@ -79,7 +79,7 @@ $result = $conn->query($sql);
         <?php
         if ($result && $result->num_rows > 0) {
             while ($row = $result->fetch_assoc()) {
-                // 避免未定義 key 與 null 警告
+                // 安全取值並避免 null
                 $pro_ID   = htmlspecialchars($row['pro_ID']       ?? '');
                 $name     = htmlspecialchars($row['name']         ?? '');
                 $position = htmlspecialchars($row['position']     ?? '');
@@ -88,10 +88,10 @@ $result = $conn->query($sql);
 
                 // 整張卡片可點擊，導向 main.php?id=...
                 echo "<a class='card' href='main.php?id={$pro_ID}'>";
-                echo "<img src='uploads/{$photo}' alt='{$name}'>";
-                echo "<h3>{$name}</h3>";
-                echo "<p>{$position}</p>";
-                echo "<p>{$intro}</p>";
+                  echo "<img src='uploads/{$photo}' alt='{$name}'>";
+                  echo "<h3>{$name}</h3>";
+                  echo "<p>{$position}</p>";
+                  echo "<p>{$intro}</p>";
                 echo "</a>";
             }
         } else {
