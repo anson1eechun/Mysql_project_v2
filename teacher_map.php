@@ -1,5 +1,12 @@
 <?php
-// index.php - 教授介紹總覽，放在 public_html 根目錄
+require_once 'config.php';
+…
+
+<?php
+require_once 'config.php';
+…
+
+<?php
 // 載入資料庫連線設定
 require_once 'config.php';
 
