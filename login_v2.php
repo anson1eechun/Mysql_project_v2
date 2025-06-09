@@ -7,7 +7,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $password = $_POST["password"];
 
     // 使用 prepared statement 防止 SQL injection
-    $stmt = $conn->prepare("SELECT * FROM users WHERE username = ? AND password_hash = SHA2(?, 256)");
+    $stmt = $conn->prepare("SELECT * FROM administrator WHERE username = ? AND password_hash = SHA2(?, 256)");
     $stmt->bind_param("ss", $username, $password);
     $stmt->execute();
     $result = $stmt->get_result();

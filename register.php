@@ -7,7 +7,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $password = $_POST["password"];
 
     // hash password using SHA2
-    $stmt = $conn->prepare("INSERT INTO users (username, password_hash) VALUES (?, SHA2(?, 256))");
+    $stmt = $conn->prepare("INSERT INTO administrator (username, password_hash) VALUES (?, SHA2(?, 256))");
     $stmt->bind_param("ss", $username, $password);
 
     if ($stmt->execute()) {
