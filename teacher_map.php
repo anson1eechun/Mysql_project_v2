@@ -33,15 +33,14 @@ $conn->set_charset('utf8');
         if ($result = $conn->query($sql)) {
             if ($result->num_rows > 0) {
                 while ($row = $result->fetch_assoc()) {
-                    $id    = htmlspecialchars($row['pro_ID']);
-                    $name  = htmlspecialchars($row['name']);
-                    // 若 photo 欄位存放路徑，直接使用；否則預設頭像
-                    $photo = !empty($row['photo']) ? $row['photo'] : 'uploads/default.jpg';
-                    // 建立卡片
+                    $id    = htmlspecialchars($row['pro_ID'], ENT_QUOTES, 'UTF-8');
+                    $name  = htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8');
+                    $photo = !empty($row['photo']) ? htmlspecialchars($row['photo'], ENT_QUOTES, 'UTF-8') : 'uploads/default.jpg';
                     echo "<div class='card'>";
-                    echo "<a href='teacher.php?id={$id}'>";
-                    echo "<img src='" . htmlspecialchars($photo) . "' alt='" . \$name . "'>";
-                    echo "<div>" . \$name . "</div>";
+                    // 將連結指向 index.php 並帶上對應的 id 參數
+                    echo "<a href='index.php?id={$id}'>";
+                    echo "<img src='{$photo}' alt='{$name}'>";
+                    echo "<div>{$name}</div>";
                     echo "</a>";
                     echo "</div>";
                 }
@@ -50,7 +49,7 @@ $conn->set_charset('utf8');
             }
             $result->free();
         } else {
-            echo "<p>資料庫查詢失敗：" . htmlspecialchars($conn->error) . "</p>";
+            echo "<p>資料庫查詢失敗：" . htmlspecialchars($conn->error, ENT_QUOTES, 'UTF-8') . "</p>";
         }
         ?>
         </div>
