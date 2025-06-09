@@ -911,21 +911,32 @@ $stmt->close();
     </style>
 </head>
 <body>
-    <nav class="sidebar-nav">
-        <h2>管理導覽</h2>
-        <ul>
-            <li><a href="#basic-info">基本資料</a></li>
-            <li><a href="#education">學歷</a></li>
-            <li><a href="#expertise">專長</a></li>
-            <li><a href="#journal">期刊論文</a></li>
-            <li><a href="#conference">會議論文</a></li>
-            <li><a href="#experience">經歷</a></li>
-            <li><a href="#courses">課程管理</a></li>
-            <li><a href="#award">獎項</a></li>
-            <li><a href="#lecture">演講</a></li>
-            <li><a href="#project">專案</a></li>
+    <!-- 漢堡選單按鈕 -->
+    <div id="hamburger" style="position:fixed;top:18px;left:18px;z-index:2000;cursor:pointer;">
+        <div style="width:32px;height:4px;background:#333;margin:6px 0;border-radius:2px;"></div>
+        <div style="width:32px;height:4px;background:#333;margin:6px 0;border-radius:2px;"></div>
+        <div style="width:32px;height:4px;background:#333;margin:6px 0;border-radius:2px;"></div>
+    </div>
+    <!-- 側邊導覽選單 -->
+    <div id="sideNav" style="display:none;position:fixed;top:0;left:0;width:220px;height:100vh;background:#fff;box-shadow:2px 0 8px rgba(0,0,0,0.08);z-index:2100;padding:32px 0 0 0;">
+        <ul style="list-style:none;padding:0 24px;">
+            <li style="margin-bottom:18px;"><a href="#basic-info">基本資料</a></li>
+            <li style="margin-bottom:18px;"><a href="#education">學歷</a></li>
+            <li style="margin-bottom:18px;"><a href="#expertise">專長</a></li>
+            <li style="margin-bottom:18px;"><a href="#journal">期刊論文</a></li>
+            <li style="margin-bottom:18px;"><a href="#conference">會議論文</a></li>
+            <li style="margin-bottom:18px;"><a href="#experience">經歷</a></li>
+            <li style="margin-bottom:18px;"><a href="#courses">課程管理</a></li>
+            <li style="margin-bottom:18px;"><a href="#award">獎項</a></li>
+            <li style="margin-bottom:18px;"><a href="#lecture">演講</a></li>
+            <li style="margin-bottom:18px;"><a href="#project">專案</a></li>
+            <li style="margin-bottom:18px;"><a href="#contact">聯絡資訊</a></li>
         </ul>
-    </nav>
+    </div>
+    <!-- 遮罩 -->
+    <div id="sideNavMask" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.15);z-index:2099;"></div>
+    <!-- 返回 dashboard 按鈕 -->
+    <a href="dashboard.php" style="position:fixed;top:18px;right:18px;z-index:2000;padding:8px 18px;background:#667eea;color:#fff;border:none;border-radius:6px;text-decoration:none;">返回</a>
     <div class="container">
         <?php if (isset($message)): ?>
             <div class="message"><?php echo $message; ?></div>
@@ -1989,45 +2000,22 @@ $stmt->close();
                 document.getElementById('edit_award_student_list').value = (student_list === '-') ? '' : student_list;
             }
 
-            // 關閉課程編輯彈出視窗 (舊的)
-            document.querySelector('#editModal .close').onclick = function() {
-                closeModal('editModal');
-            }
-
-            // 點擊視窗外部關閉 (舊的)
-            window.onclick = function(event) {
-                if (event.target == document.getElementById('editModal')) {
-                    closeModal('editModal');
-                }
-            }
-
-            // 處理所有彈出視窗的外部點擊關閉
-            window.onclick = function(event) {
-                if (event.target.classList.contains('modal')) {
-                    event.target.style.display = 'none';
-                }
-            }
-
-            // 處理編輯演講的彈出視窗
-            function editLecture(id, title, location, date) {
-                document.getElementById('editLectureModal').style.display = 'block';
-                document.getElementById('edit_lecture_ID').value = id;
-                document.getElementById('edit_lecture_title').value = (title === '-') ? '' : title;
-                document.getElementById('edit_lecture_location').value = (location === '-') ? '' : location;
-                document.getElementById('edit_lecture_date').value = (date === '-') ? '' : date;
-            }
-
-            // 處理編輯專案的彈出視窗
-            function editProject(id, category, name, date, number, role) {
-                document.getElementById('editProjectModal').style.display = 'block';
-                document.getElementById('edit_project_ID').value = id;
-                document.getElementById('edit_project_category').value = (category === '-') ? '' : category;
-                document.getElementById('edit_project_name').value = (name === '-') ? '' : name;
-                document.getElementById('edit_project_date').value = (date === '-') ? '' : date;
-                document.getElementById('edit_project_number').value = (number === '-') ? '' : number;
-                document.getElementById('edit_project_role').value = (role === '-') ? '' : role;
-            }
-
+            // 漢堡選單開關
+            document.getElementById('hamburger').onclick = function() {
+                document.getElementById('sideNav').style.display = 'block';
+                document.getElementById('sideNavMask').style.display = 'block';
+            };
+            document.getElementById('sideNavMask').onclick = function() {
+                document.getElementById('sideNav').style.display = 'none';
+                document.getElementById('sideNavMask').style.display = 'none';
+            };
+            // 點擊側邊選單連結自動關閉側邊欄
+            Array.from(document.querySelectorAll('#sideNav a')).forEach(function(link){
+                link.onclick = function() {
+                    document.getElementById('sideNav').style.display = 'none';
+                    document.getElementById('sideNavMask').style.display = 'none';
+                };
+            });
         </script>
 
         <div class="section">
