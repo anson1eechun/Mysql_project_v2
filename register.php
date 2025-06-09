@@ -1,6 +1,5 @@
 <?php
-// connect to MySQL
-$mysqli = new mysqli("localhost", "root", "", "your_database");
+require_once 'config.php';
 
 // handle form submission
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -8,11 +7,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $password = $_POST["password"];
 
     // hash password using SHA2
-    $stmt = $mysqli->prepare("INSERT INTO users (username, password_hash) VALUES (?, SHA2(?, 256))");
+    $stmt = $conn->prepare("INSERT INTO users (username, password_hash) VALUES (?, SHA2(?, 256))");
     $stmt->bind_param("ss", $username, $password);
 
     if ($stmt->execute()) {
-        echo "註冊成功！<a href='login.php'>點我登入</a>";
+        echo "註冊成功！<a href='login_v2.php'>點我登入</a>";
     } else {
         echo "註冊失敗：" . $stmt->error;
     }

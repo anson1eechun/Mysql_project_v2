@@ -1,13 +1,5 @@
 <?php
-session_start();
-
-// 建立與資料庫的連線
-$mysqli = new mysqli("localhost", "root", "", "your_database"); // 請改成你的資料庫名稱
-
-// 檢查是否連線成功
-if ($mysqli->connect_error) {
-    die("連線失敗：" . $mysqli->connect_error);
-}
+require_once 'config.php';
 
 // 處理登入表單提交
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -15,7 +7,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $password = $_POST["password"];
 
     // 使用 prepared statement 防止 SQL injection
-    $stmt = $mysqli->prepare("SELECT * FROM users WHERE username = ? AND password_hash = SHA2(?, 256)");
+    $stmt = $conn->prepare("SELECT * FROM users WHERE username = ? AND password_hash = SHA2(?, 256)");
     $stmt->bind_param("ss", $username, $password);
     $stmt->execute();
     $result = $stmt->get_result();

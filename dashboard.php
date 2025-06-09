@@ -1,12 +1,12 @@
 <?php
-session_start();
+require_once 'config.php';
+
 if (!isset($_SESSION["username"])) {
-    header("Location: login.php");
+    header("Location: login_v2.php");
     exit;
 }
 
-$mysqli = new mysqli("localhost", "root", "", "your_database");
-$result = $mysqli->query("SELECT * FROM professors");
+$result = $conn->query("SELECT * FROM professor");
 
 echo "<h2>系上教授列表</h2>";
 echo "<p>登入帳號：" . htmlspecialchars($_SESSION["username"]) . "</p>";
