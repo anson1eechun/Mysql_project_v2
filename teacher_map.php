@@ -1,4 +1,9 @@
 <?php
+die('LOADED teacher_map.php');
+require_once 'config.php';
+…
+
+<?php
 // 載入資料庫連線設定
 require_once 'config.php';
 
