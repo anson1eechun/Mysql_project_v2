@@ -6,9 +6,39 @@ if (!isset($_SESSION["username"])) {
     exit;
 }
 
-$result = $conn->query("SELECT pro_ID, name, photo FROM professor");
+// 新增教授功能
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['add_professor'])) {
+    $pro_ID = trim($_POST['pro_ID']);
+    $name = trim($_POST['name']);
+    $position = trim($_POST['position']);
+    $introduction = trim($_POST['introduction']);
+    $email = trim($_POST['email']);
+    $phone = trim($_POST['phone']);
+    $office = trim($_POST['office']);
+    $photo = '';
+    // 處理圖片上傳
+    if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+        $ext = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
+        $photo = 'uploads/' . uniqid('prof_', true) . '.' . $ext;
+        move_uploaded_file($_FILES['photo']['tmp_name'], $photo);
+    }
+    $stmt = $conn->prepare("INSERT INTO professor (pro_ID, name, position, introduction, email, phone, office, photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssssssss", $pro_ID, $name, $position, $introduction, $email, $phone, $office, $photo);
+    $stmt->execute();
+    $stmt->close();
+}
 
-// CSS 直接寫在這裡，或可移到 styles.css
+// 搜尋功能
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+if ($search === '') {
+    $result = $conn->query("SELECT pro_ID, name, photo FROM professor");
+} else {
+    $stmt = $conn->prepare("SELECT pro_ID, name, photo FROM professor WHERE name LIKE CONCAT('%', ?, '%') OR pro_ID LIKE CONCAT('%', ?, '%')");
+    $stmt->bind_param("ss", $search, $search);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
+}
 ?>
 <style>
 .dashboard-grid {
@@ -60,7 +90,16 @@ $result = $conn->query("SELECT pro_ID, name, photo FROM professor");
 }
 </style>
 
-<h2 style="text-align:center; margin-top:32px;">系上教授列表</h2>
+<h2 style="text-align:center; margin-top:32px;">系所成員</h2>
+<div style="max-width:1000px;margin:0 auto 24px auto;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
+    <form method="get" style="flex:1;min-width:220px;">
+        <input type="text" name="search" placeholder="搜尋教授姓名或ID" value="<?php echo htmlspecialchars($search); ?>" style="padding:8px 12px;width:70%;max-width:260px;">
+        <button type="submit" style="padding:8px 18px;">搜尋</button>
+        <a href="dashboard.php" style="margin-left:8px;">顯示全部</a>
+    </form>
+    <button onclick="document.getElementById('addProfessorModal').style.display='block'" style="padding:8px 18px;background:#667eea;color:#fff;border:none;border-radius:6px;cursor:pointer;">+ 新增教授</button>
+</div>
+
 <div class="dashboard-grid">
 <?php
 while ($row = $result->fetch_assoc()) {
@@ -73,4 +112,39 @@ while ($row = $result->fetch_assoc()) {
     echo "</div>";
 }
 ?>
+</div>
+
+<!-- 新增教授 Modal -->
+<div id="addProfessorModal" style="display:none;position:fixed;z-index:1000;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);">
+  <div style="background:#fff;max-width:400px;margin:60px auto;padding:32px 24px;border-radius:12px;position:relative;">
+    <span onclick="document.getElementById('addProfessorModal').style.display='none'" style="position:absolute;right:18px;top:12px;font-size:1.5rem;cursor:pointer;">&times;</span>
+    <h3 style="margin-bottom:18px;">新增教授</h3>
+    <form method="post" enctype="multipart/form-data">
+      <div style="margin-bottom:10px;">
+        <label>教授ID：</label><input type="text" name="pro_ID" required style="width:80%;padding:6px;">
+      </div>
+      <div style="margin-bottom:10px;">
+        <label>姓名：</label><input type="text" name="name" required style="width:80%;padding:6px;">
+      </div>
+      <div style="margin-bottom:10px;">
+        <label>職位：</label><input type="text" name="position" required style="width:80%;padding:6px;">
+      </div>
+      <div style="margin-bottom:10px;">
+        <label>自介：</label><textarea name="introduction" style="width:80%;padding:6px;" rows="2"></textarea>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label>Email：</label><input type="email" name="email" style="width:80%;padding:6px;">
+      </div>
+      <div style="margin-bottom:10px;">
+        <label>辦公室電話：</label><input type="text" name="phone" style="width:80%;padding:6px;">
+      </div>
+      <div style="margin-bottom:10px;">
+        <label>辦公室位置：</label><input type="text" name="office" style="width:80%;padding:6px;">
+      </div>
+      <div style="margin-bottom:18px;">
+        <label>照片：</label><input type="file" name="photo" accept="image/*">
+      </div>
+      <button type="submit" name="add_professor" style="padding:8px 18px;background:#667eea;color:#fff;border:none;border-radius:6px;">新增</button>
+    </form>
+  </div>
 </div>
