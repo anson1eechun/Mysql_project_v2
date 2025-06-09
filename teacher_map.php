@@ -1,5 +1,5 @@
 <?php
-die('LOADED teacher_map.php');
+// index.php - 教授介紹總覽，放在 public_html 根目錄
 // 載入資料庫連線設定
 require_once 'config.php';
 
@@ -17,7 +17,6 @@ $result = $conn->query($sql);
     <!-- 載入 Google 字體 -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* 全域樣式設定 */
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background: linear-gradient(to bottom right, #f0f4f8, #ffffff);
@@ -26,20 +25,17 @@ $result = $conn->query($sql);
             margin: 0 auto;
             padding: 40px 20px;
         }
-        /* 主標題 */
         h1 {
             text-align: center;
             font-size: 36px;
             color: #003366;
             margin-bottom: 40px;
         }
-        /* Grid 版面配置 */
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 30px;
         }
-        /* 卡片樣式（使用 <a> 使整張卡片可點擊） */
         .card {
             display: block;
             background-color: #fff;
@@ -52,9 +48,7 @@ $result = $conn->query($sql);
             color: inherit;
             cursor: pointer;
         }
-        .card:hover {
-            transform: translateY(-5px);
-        }
+        .card:hover { transform: translateY(-5px); }
         .card img {
             width: 120px;
             height: 120px;
@@ -62,43 +56,32 @@ $result = $conn->query($sql);
             border-radius: 50%;
             margin-bottom: 15px;
         }
-        .card h3 {
-            font-size: 20px;
-            color: #005bac;
-            margin: 10px 0;
-        }
-        .card p {
-            font-size: 14px;
-            color: #555;
-            margin-bottom: 10px;
-        }
+        .card h3 { font-size: 20px; color: #005bac; margin: 10px 0; }
+        .card p { font-size: 14px; color: #555; margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <h1>教授介紹總覽</h1>
     <div class="grid">
-        <?php
-        if ($result && $result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                // 安全取值並避免 null
+        <?php if ($result && $result->num_rows > 0): ?>
+            <?php while ($row = $result->fetch_assoc()): ?>
+                <?php
                 $pro_ID   = htmlspecialchars($row['pro_ID']       ?? '');
                 $name     = htmlspecialchars($row['name']         ?? '');
                 $position = htmlspecialchars($row['position']     ?? '');
                 $intro    = mb_substr(strip_tags($row['introduction'] ?? ''), 0, 50, 'UTF-8') . '...';
                 $photo    = htmlspecialchars($row['photo']        ?? '');
-
-                // 整張卡片可點擊，導向 main.php?id=...
-                echo "<a class='card' href='main.php?id={$pro_ID}'>";
-                  echo "<img src='uploads/{$photo}' alt='{$name}'>";
-                  echo "<h3>{$name}</h3>";
-                  echo "<p>{$position}</p>";
-                  echo "<p>{$intro}</p>";
-                echo "</a>";
-            }
-        } else {
-            echo '<p>目前尚無教授資料。</p>';
-        }
-        ?>
+                ?>
+                <a class="card" href="main.php?id=<?php echo $pro_ID;?>">
+                    <img src="uploads/<?php echo $photo;?>" alt="<?php echo $name;?>">
+                    <h3><?php echo $name;?></h3>
+                    <p><?php echo $position;?></p>
+                    <p><?php echo $intro;?></p>
+                </a>
+            <?php endwhile; ?>
+        <?php else: ?>
+            <p>目前尚無教授資料。</p>
+        <?php endif;?>
     </div>
 </body>
 </html>
