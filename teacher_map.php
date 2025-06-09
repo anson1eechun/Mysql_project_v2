@@ -82,14 +82,14 @@ $result = $conn->query($sql);
                 // 避免未定義 key 與 null 警告
                 $pro_ID = htmlspecialchars($row['pro_ID'] ?? '');
                 $name   = htmlspecialchars($row['name']     ?? '');
-                $title  = htmlspecialchars($row['title']    ?? '');
+                $position  = htmlspecialchars($row['position']    ?? '');
                 $intro  = mb_substr(strip_tags($row['introduction'] ?? ''), 0, 50, 'UTF-8') . '...';
                 $photo  = htmlspecialchars($row['photo']    ?? '');
-                // 整張卡片可點擊，導向 profile.php
-                echo "<a class='card' href='profile.php?pro_ID={$pro_ID}'>";
+                // 整張卡片可點擊，導向 main.php
+                echo "<a class='card' href='main.php?pro_ID={$pro_ID}'>";
                   echo "<img src='uploads/{$photo}' alt='{$name}'>";
                   echo "<h3>{$name}</h3>";
-                  echo "<p>{$title}</p>";
+                  echo "<p>{$position}</p>";
                   echo "<p>{$intro}</p>";
                 echo "</a>";
             }
