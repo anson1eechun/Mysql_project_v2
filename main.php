@@ -2,6 +2,24 @@
 // 引入資料庫連接文件
 require_once 'config.php';
 
+$pro_ID = isset($_GET['id']) ? $_GET['id'] : null;
+if (!$pro_ID) {
+    echo '<p style="text-align:center;color:#c00;">請從教授列表選擇要編輯的教授</p>';
+    exit;
+}
+
+$stmt = $conn->prepare("SELECT * FROM professor WHERE pro_ID = ?");
+$stmt->bind_param("s", $pro_ID);
+$stmt->execute();
+$result_professor = $stmt->get_result();
+$professor = $result_professor->fetch_assoc();
+$stmt->close();
+
+if (!$professor) {
+    echo '<p style="text-align:center;color:#c00;">找不到該教授資料</p>';
+    exit;
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     try {
         // 根據提交的表單類型執行不同的操作
