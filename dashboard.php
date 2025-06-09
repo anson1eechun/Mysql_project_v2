@@ -29,17 +29,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['add_professor'])) {
 }
 
 // 搜尋功能
-$search = isset($_GET['search']) ? trim($_GET['search']) : null;
-if ($search !== null) {
-    if ($search === '') {
-        $result = $conn->query("SELECT pro_ID, name, photo FROM professor");
-    } else {
-        $stmt = $conn->prepare("SELECT pro_ID, name, photo FROM professor WHERE name LIKE CONCAT('%', ?, '%') OR pro_ID LIKE CONCAT('%', ?, '%')");
-        $stmt->bind_param("ss", $search, $search);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $stmt->close();
-    }
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$showAll = isset($_GET['showall']);
+if ($showAll) {
+    $result = $conn->query("SELECT pro_ID, name, photo FROM professor");
+} elseif ($search !== '') {
+    $stmt = $conn->prepare("SELECT pro_ID, name, photo FROM professor WHERE name LIKE CONCAT('%', ?, '%') OR pro_ID LIKE CONCAT('%', ?, '%')");
+    $stmt->bind_param("ss", $search, $search);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
 } else {
     $result = false; // 預設不顯示任何教授
 }
@@ -97,9 +96,9 @@ if ($search !== null) {
 <h2 style="text-align:center; margin-top:32px;">系所成員</h2>
 <div style="max-width:1000px;margin:0 auto 24px auto;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
     <form method="get" style="flex:1;min-width:220px;">
-        <input type="text" name="search" placeholder="搜尋教授姓名或ID" value="<?php echo htmlspecialchars($search); ?>" style="padding:8px 12px;width:70%;max-width:260px;">
+        <input type="text" name="search" placeholder="搜尋教授姓名或ID" value="<?php echo isset($_GET['search']) ? htmlspecialchars($search, ENT_QUOTES, 'UTF-8') : ''; ?>" style="padding:8px 12px;width:70%;max-width:260px;">
         <button type="submit" style="padding:8px 18px;">搜尋</button>
-        <a href="dashboard.php" style="margin-left:8px;">顯示全部</a>
+        <a href="dashboard.php?showall=1" style="margin-left:8px;">顯示全部</a>
     </form>
     <button onclick="document.getElementById('addProfessorModal').style.display='block'" style="padding:8px 18px;background:#667eea;color:#fff;border:none;border-radius:6px;cursor:pointer;">+ 新增教授</button>
 </div>
