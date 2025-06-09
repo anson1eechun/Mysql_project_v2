@@ -1,149 +1,231 @@
-/* 基本樣式 */
-body {
-    font-family: 'Noto Sans TC', sans-serif;
-    line-height: 1.6;
+/* ===== 全局 & 容器 ===== */
+* {
+    box-sizing: border-box;
     margin: 0;
-    padding: 20px;
-    background-color: #f5f5f5;
-    color: #333;
+    padding: 0;
 }
-
-/* 容器樣式 */
+body {
+    font-family: 'Microsoft JhengHei', sans-serif;
+    background: white;
+    color: #272727;
+    line-height: 1.6;
+}
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 15px;
-}
-
-/* Logo 樣式 */
-.logo {
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.logo img {
-    max-width: 200px;
-    height: auto;
-}
-
-/* 標題樣式 */
-h1 {
-    color: #333;
-    margin-bottom: 20px;
-    font-size: 2rem;
-    text-align: center;
-}
-
-h2 {
-    color: #444;
-    margin-bottom: 15px;
-    font-size: 1.5rem;
-}
-
-/* 區塊樣式 */
-.section {
-    margin-bottom: 30px;
     padding: 20px;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* 簡介區塊 */
+/* ===== 顶部导航 ===== */
+.header-top {
+    background-color: #f8f9fa;
+    padding: 10px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+.header-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.logo img {
+    height: 50px;
+}
+.main-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+}
+.main-nav li {
+    margin-right: 20px;
+}
+.main-nav a {
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+    padding: 5px 0;
+    transition: color 0.3s ease;
+}
+.main-nav a:hover {
+    color: #007bff;
+}
+.btn-english {
+    background-color: #007bff;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+.btn-english:hover {
+    background-color: #0056b3;
+}
+
+/* Professor Header Styles */
+.professor-header {
+    text-align: center;
+    margin-top: 40px;
+    margin-bottom: 20px;
+}
+.black-bar {
+    width: 100%;
+    max-width: 500px;
+    height: 5px;
+    background-color: black;
+    margin: 0 auto 20px auto;
+}
+.professor-header h1 {
+    font-size: 3em;
+    color: #333;
+    margin-bottom: 5px;
+    line-height: 1.2;
+}
+.professor-header .position {
+    font-size: 1.2em;
+    color: #666;
+    margin-top: 0;
+}
+
+/* ===== 通用 Section 卡片化 ===== */
+.section {
+    background-color: #f9f9f9;
+    padding: 25px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.section h2 {
+    color: #007bff;
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 10px;
+}
+
+/* ===== 简介区块 ===== */
 .intro-wrapper {
     display: flex;
-    gap: 30px;
+    gap: 20px;
     align-items: flex-start;
 }
-
 .intro-content {
     flex: 2;
 }
-
+.intro-content p {
+    text-align: justify;
+    line-height: 1.8;
+    color: #555;
+}
 .intro-photo {
     flex: 1;
     text-align: center;
 }
-
 .intro-photo img {
     max-width: 100%;
     height: auto;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-/* 列表樣式 */
+/* ===== 列表 & 联系资讯 ===== */
 ul {
     list-style-type: none;
-    padding-left: 0;
+    padding: 0;
 }
-
-li {
-    margin-bottom: 12px;
-    line-height: 1.6;
+ul li {
+    background-color: #e9ecef;
+    margin-bottom: 10px;
+    padding: 12px 15px;
+    border-radius: 5px;
+    color: #333;
 }
-
-/* 聯絡資訊樣式 */
-.contact-info {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
 .contact-info li {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    margin-bottom: 5px;
+    color: #555;
+}
+
+/* ===== 课表 ===== */
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    text-align: center;
+    font-size: 14px;
+}
+.schedule-table th,
+.schedule-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+.schedule-table th {
+    background: #e8f1fb;
+    color: #005bac;
+}
+
+.course-item {
+    padding: 4px;
+    margin: 2px 0;
     background-color: #f8f9fa;
-    padding: 8px 15px;
-    border-radius: 20px;
-    font-size: 0.9rem;
+    border-radius: 3px;
+    font-size: 0.9em;
 }
 
-/* 論文區塊樣式 */
-details {
-    margin-bottom: 15px;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-}
-
-summary {
-    cursor: pointer;
-    padding: 15px;
-    background-color: #f8f9fa;
-    border-radius: 8px 8px 0 0;
-    font-weight: 500;
-}
-
-summary:hover {
+.course-item:hover {
     background-color: #e9ecef;
 }
 
+.schedule-link {
+    display: inline-block;
+    margin-bottom: 10px;
+    color: #007bff;
+    text-decoration: none;
+}
+
+.schedule-link:hover {
+    text-decoration: underline;
+}
+
+/* ===== 摺疊详情 ===== */
+details summary {
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    color: #222;
+    margin-bottom: 8px;
+}
 details[open] summary {
-    border-bottom: 1px solid #e9ecef;
+    color: #005bac;
+}
+details ol {
+    margin-left: 20px;
 }
 
-/* 課程表格樣式 */
-.course-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 20px 0;
+/* ===== 響應式設計 ===== */
+@media (max-width: 768px) {
+    .intro-wrapper {
+        flex-direction: column;
+    }
+    .main-nav ul {
+        flex-direction: column;
+        align-items: center;
+        margin-top: 10px;
+    }
+    .main-nav li {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    .header-inner {
+        flex-direction: column;
+    }
+    .schedule-table {
+        display: block;
+        overflow-x: auto;
+    }
 }
 
-.course-table th,
-.course-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.course-table th {
-    background-color: #f8f9fa;
-    font-weight: 500;
-}
-
-.course-table tr:hover {
-    background-color: #f8f9fa;
-}
-
-/* 底部圖片樣式 */
 .image-gallery {
     text-align: center;
     margin-top: 30px;
@@ -152,94 +234,4 @@ details[open] summary {
 .image-gallery img {
     max-width: 100%;
     height: auto;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-/* 響應式設計 */
-@media (max-width: 1200px) {
-    .container {
-        max-width: 960px;
-    }
-}
-
-@media (max-width: 992px) {
-    .container {
-        max-width: 720px;
-    }
-    
-    h1 {
-        font-size: 1.8rem;
-    }
-    
-    h2 {
-        font-size: 1.3rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .container {
-        max-width: 540px;
-    }
-    
-    .intro-wrapper {
-        flex-direction: column;
-    }
-    
-    .intro-photo {
-        order: -1;
-    }
-    
-    .intro-photo img {
-        max-width: 200px;
-        margin: 0 auto;
-        display: block;
-    }
-    
-    .course-table {
-        display: block;
-        overflow-x: auto;
-    }
-    
-    .contact-info {
-        justify-content: center;
-    }
-}
-
-@media (max-width: 576px) {
-    body {
-        padding: 10px;
-    }
-    
-    .section {
-        padding: 15px;
-    }
-    
-    h1 {
-        font-size: 1.5rem;
-    }
-    
-    h2 {
-        font-size: 1.2rem;
-    }
-    
-    .contact-info li {
-        width: 100%;
-        text-align: center;
-    }
-}
-
-.schedule-link {
-    display: inline-block;
-    margin-bottom: 1rem;
-    padding: 0.5rem 1rem;
-    background: #007bff;
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    transition: background-color 0.2s;
-}
-
-.schedule-link:hover {
-    background: #0056b3;
 }

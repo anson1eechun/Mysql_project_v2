@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <title>彩蛋遊戲</title>
+=======
+    <title>平面射擊遊戲</title>
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
     <style>
         body {
             margin: 0;
@@ -23,7 +27,11 @@
         }
         
         #gameCanvas {
+<<<<<<< HEAD
             background: linear-gradient(180deg, #000428 0%, #004e92 100%);
+=======
+            background: #000428;
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
             display: block;
         }
         
@@ -34,6 +42,10 @@
             color: #fff;
             font-size: 18px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+<<<<<<< HEAD
+=======
+            z-index: 10;
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
         }
         
         #gameOver {
@@ -44,6 +56,13 @@
             text-align: center;
             color: #fff;
             display: none;
+<<<<<<< HEAD
+=======
+            background: rgba(0,0,0,0.8);
+            padding: 30px;
+            border-radius: 10px;
+            z-index: 20;
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
         }
         
         #gameOver h2 {
@@ -78,11 +97,28 @@
             font-size: 14px;
             opacity: 0.7;
         }
+<<<<<<< HEAD
+=======
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 24px;
+            z-index: 30;
+        }
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
     </style>
 </head>
 <body>
     <div id="gameContainer">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
+<<<<<<< HEAD
+=======
+        <div id="loading">載入中...</div>
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
         <div id="gameUI">
             <div>分數: <span id="score">0</span></div>
             <div>生命: <span id="lives">3</span></div>
@@ -105,6 +141,77 @@
         const gameOverEl = document.getElementById('gameOver');
         const finalScoreEl = document.getElementById('finalScore');
         const restartBtn = document.getElementById('restartBtn');
+<<<<<<< HEAD
+=======
+        const loadingEl = document.getElementById('loading');
+
+        // ========== 圖片設置區域 ==========
+        // 在這裡設置你的圖片路徑
+        // 請將下面的路徑替換為你實際的圖片檔案路徑
+        
+        // 背景圖片路徑（例如：'images/background.jpg' 或 'https://example.com/bg.jpg'）
+        const BACKGROUND_IMAGE_PATH = 'uploads/room.jpg'; // 在這裡填入背景圖片路徑
+        
+        // 玩家圖片路徑（例如：'images/player.png' 或 'https://example.com/player.png'）
+        const PLAYER_IMAGE_PATH = 'uploads/db_T.png'; // 在這裡填入玩家圖片路徑
+        
+        // 敵人圖片路徑（例如：'images/enemy.png' 或 'https://example.com/enemy.png'）
+        const ENEMY_IMAGE_PATH = 'uploads/net_T.png'; // 在這裡填入敵人圖片路徑
+        
+        // ========== 圖片設置區域結束 ==========
+
+        // 圖片物件
+        let bgImg = null;
+        let playerImg = null;
+        let enemyImg = null;
+        let imagesLoaded = 0;
+        let totalImages = 0;
+
+        // 載入圖片函數
+        function loadImage(src, callback) {
+            if (!src) {
+                callback(null);
+                return;
+            }
+            
+            totalImages++;
+            const img = new Image();
+            img.onload = function() {
+                imagesLoaded++;
+                callback(img);
+                checkAllImagesLoaded();
+            };
+            img.onerror = function() {
+                console.error('無法載入圖片：' + src);
+                imagesLoaded++;
+                callback(null);
+                checkAllImagesLoaded();
+            };
+            img.src = src;
+        }
+
+        // 檢查所有圖片是否載入完成
+        function checkAllImagesLoaded() {
+            if (imagesLoaded === totalImages) {
+                loadingEl.style.display = 'none';
+                gameLoop();
+            }
+        }
+
+        // 載入所有圖片
+        function loadAllImages() {
+            // 如果沒有任何圖片路徑，直接開始遊戲
+            if (!BACKGROUND_IMAGE_PATH && !PLAYER_IMAGE_PATH && !ENEMY_IMAGE_PATH) {
+                loadingEl.style.display = 'none';
+                gameLoop();
+                return;
+            }
+
+            loadImage(BACKGROUND_IMAGE_PATH, (img) => { bgImg = img; });
+            loadImage(PLAYER_IMAGE_PATH, (img) => { playerImg = img; });
+            loadImage(ENEMY_IMAGE_PATH, (img) => { enemyImg = img; });
+        }
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
 
         // 遊戲狀態
         let gameRunning = true;
@@ -113,10 +220,17 @@
         
         // 玩家
         const player = {
+<<<<<<< HEAD
             x: canvas.width / 2 - 25,
             y: canvas.height - 80,
             width: 50,
             height: 50,
+=======
+            x: canvas.width / 2 - 30,
+            y: canvas.height - 80,
+            width: 60,
+            height: 60,
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
             speed: 5,
             color: '#0ff'
         };
@@ -124,8 +238,13 @@
         // 子彈
         const bullets = [];
         const bulletSpeed = 8;
+<<<<<<< HEAD
         const bulletWidth = 4;
         const bulletHeight = 15;
+=======
+        const bulletWidth = 6;
+        const bulletHeight = 20;
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
         
         // 敵人
         const enemies = [];
@@ -163,10 +282,17 @@
         function createEnemy() {
             if (enemies.length < maxEnemies) {
                 const enemy = {
+<<<<<<< HEAD
                     x: Math.random() * (canvas.width - 40),
                     y: -40,
                     width: 40,
                     height: 40,
+=======
+                    x: Math.random() * (canvas.width - 50),
+                    y: -50,
+                    width: 50,
+                    height: 50,
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
                     speed: enemySpeed + Math.random() * 2,
                     color: '#f00',
                     type: Math.random() > 0.7 ? 'fast' : 'normal'
@@ -175,8 +301,13 @@
                 if (enemy.type === 'fast') {
                     enemy.speed *= 1.5;
                     enemy.color = '#ff0';
+<<<<<<< HEAD
                     enemy.width = 30;
                     enemy.height = 30;
+=======
+                    enemy.width = 40;
+                    enemy.height = 40;
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
                 }
                 
                 enemies.push(enemy);
@@ -185,6 +316,7 @@
         
         // 創建粒子爆炸效果
         function createExplosion(x, y, color) {
+<<<<<<< HEAD
             for (let i = 0; i < 15; i++) {
                 particles.push({
                     x: x,
@@ -192,6 +324,15 @@
                     vx: (Math.random() - 0.5) * 8,
                     vy: (Math.random() - 0.5) * 8,
                     size: Math.random() * 3 + 1,
+=======
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    size: Math.random() * 4 + 2,
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
                     life: 1,
                     color: color
                 });
@@ -210,6 +351,7 @@
         function update() {
             if (!gameRunning) return;
             
+<<<<<<< HEAD
             // 更新星星背景
             stars.forEach(star => {
                 star.y += star.speed;
@@ -218,6 +360,18 @@
                     star.x = Math.random() * canvas.width;
                 }
             });
+=======
+            // 更新星星背景（如果沒有背景圖片）
+            if (!bgImg) {
+                stars.forEach(star => {
+                    star.y += star.speed;
+                    if (star.y > canvas.height) {
+                        star.y = 0;
+                        star.x = Math.random() * canvas.width;
+                    }
+                });
+            }
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
             
             // 玩家移動
             if ((keys['ArrowLeft'] || keys['a'] || keys['A']) && player.x > 0) {
@@ -314,6 +468,7 @@
         // 繪製遊戲
         function draw() {
             // 清空畫布
+<<<<<<< HEAD
             ctx.fillStyle = 'rgba(0, 4, 40, 0.1)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
@@ -342,6 +497,47 @@
             ctx.shadowColor = player.color;
             ctx.fill();
             ctx.restore();
+=======
+            ctx.fillStyle = '#000428';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 繪製背景圖片或星星
+            if (bgImg) {
+                // 儲存當前的 context 狀態
+                ctx.save();
+                
+                // 繪製背景圖片
+                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+                
+                // 添加降低飽和度的濾鏡（半透明的灰色遮罩）
+                ctx.fillStyle = 'rgba(128, 128, 128, 0.6)'; // 灰色遮罩，透明度 0.4
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 恢復 context 狀態
+                ctx.restore();
+            } else {
+                // 繪製星星
+                ctx.fillStyle = '#fff';
+                stars.forEach(star => {
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+            
+            // 繪製玩家
+            if (playerImg) {
+                ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+            } else {
+                // 繪製預設玩家方塊
+                ctx.fillStyle = player.color;
+                ctx.fillRect(player.x, player.y, player.width, player.height);
+                // 玩家方塊邊框
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(player.x, player.y, player.width, player.height);
+            }
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
             
             // 繪製子彈
             ctx.fillStyle = '#0ff';
@@ -354,6 +550,7 @@
             
             // 繪製敵人
             enemies.forEach(enemy => {
+<<<<<<< HEAD
                 ctx.fillStyle = enemy.color;
                 ctx.save();
                 ctx.translate(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
@@ -365,6 +562,19 @@
                 ctx.closePath();
                 ctx.fill();
                 ctx.restore();
+=======
+                if (enemyImg) {
+                    ctx.drawImage(enemyImg, enemy.x, enemy.y, enemy.width, enemy.height);
+                } else {
+                    // 繪製預設敵人方塊
+                    ctx.fillStyle = enemy.color;
+                    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    // 敵人方塊邊框
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                }
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
             });
             
             // 繪製粒子
@@ -388,7 +598,11 @@
             gameRunning = true;
             score = 0;
             lives = 3;
+<<<<<<< HEAD
             player.x = canvas.width / 2 - 25;
+=======
+            player.x = canvas.width / 2 - 30;
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
             player.y = canvas.height - 80;
             bullets.length = 0;
             enemies.length = 0;
@@ -405,8 +619,13 @@
             requestAnimationFrame(gameLoop);
         }
         
+<<<<<<< HEAD
         // 開始遊戲
         gameLoop();
+=======
+        // 開始載入圖片並啟動遊戲
+        loadAllImages();
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
     </script>
 </body>
 </html>

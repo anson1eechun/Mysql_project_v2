@@ -5,7 +5,11 @@ if ($db_link->connect_error) {
     die("Connection failed: " . $db_link->connect_error);
 }
 
+<<<<<<< HEAD
 $professor_name = "劉明機";
+=======
+$professor_name = "A001";
+>>>>>>> 30f2dd4 (feat: 完成所有管理區塊導覽列與圖片上傳、資料展示等功能)
 
 $sql = "SELECT  分機, 職稱 ,自我介紹 FROM 教授 WHERE 姓名 = ?";
 $stmt = $db_link->prepare($sql);
