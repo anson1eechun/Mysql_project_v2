@@ -1,105 +1,59 @@
 <?php
-// profile.php - 個別教授介紹頁面
+// teacher_map.php - 教授列表與連結頁面
 require_once 'config.php';
 
-// 取得 URL 參數 id 並過濾
-$pro_ID = isset($_GET['id']) ? $conn->real_escape_string($_GET['id']) : '';
-if (empty($pro_ID)) {
-    echo '<p>無效的教授 ID</p>';
-    exit;
-}
-
-// 查詢教授資料
-$stmt = $conn->prepare("SELECT * FROM professor WHERE pro_ID = ?");
-$stmt->bind_param("s", $pro_ID);
-$stmt->execute();
-$result = $stmt->get_result();
-$prof = $result->fetch_assoc();
-$stmt->close();
-
-if (!$prof) {
-    echo '<p>找不到此教授</p>';
-    exit;
-}
+// 設定字元編碼
+$conn->set_charset('utf8');
 ?>
-
 <!DOCTYPE html>
 <html lang="zh-Hant-TW">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><?php echo htmlspecialchars($prof['name']); ?> - 教授介紹</title>
+    <title>系所成員列表</title>
     <link rel="stylesheet" href="styles.css" />
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; background: #f9f9f9; margin: 0; }
-        .container { max-width: 900px; margin: 40px auto; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .header { display: flex; align-items: center; gap: 20px; }
-        .header img { width: 150px; height: 150px; object-fit: cover; border-radius: 50%; }
-        .header .info h1 { margin: 0; font-size: 32px; color: #003366; }
-        .header .info p { margin: 4px 0; font-size: 18px; color: #666; }
-        .section { margin-top: 30px; }
-        .section h2 { font-size: 24px; color: #005bac; border-bottom: 2px solid #005bac; padding-bottom: 6px; }
-        .section ul { margin: 10px 0; padding-left: 20px; }
-        .schedule-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .schedule-table th, .schedule-table td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+        .container { max-width: 1000px; margin: 40px auto; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 24px; }
+        .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; padding: 16px; }
+        .card img { width: 120px; height: 120px; object-fit: cover; border-radius: 50%; display: block; margin: 0 auto 12px; }
+        .card a { text-decoration: none; color: #003366; font-size: 16px; font-weight: 500; }
+        .card a:hover { color: #005bac; }
+        h1 { color: #003366; text-align: center; margin-bottom: 24px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <img src="uploads/<?php echo htmlspecialchars($prof['photo']); ?>" alt="<?php echo htmlspecialchars($prof['name']); ?> 照片" />
-            <div class="info">
-                <h1><?php echo htmlspecialchars($prof['name']); ?></h1>
-                <p><?php echo htmlspecialchars($prof['position']); ?></p>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>簡介</h2>
-            <p><?php echo nl2br(htmlspecialchars($prof['introduction'])); ?></p>
-        </div>
-
-        <div class="section">
-            <h2>學歷</h2>
-            <ul>
-            <?php
-            $edu_sql = $conn->prepare("SELECT department, degree FROM education WHERE pro_ID = ? ORDER BY edu_ID");
-            $edu_sql->bind_param("s", $pro_ID);
-            $edu_sql->execute();
-            $edu_res = $edu_sql->get_result();
-            while ($row = $edu_res->fetch_assoc()) {
-                echo '<li>'.htmlspecialchars($row['department'].' '.$row['degree']).'</li>';
+        <h1>系所成員</h1>
+        <div class="grid">
+        <?php
+        // 取得所有教授資料
+        $sql = "SELECT pro_ID, name, photo FROM professor ORDER BY name";
+        if ($result = $conn->query($sql)) {
+            if ($result->num_rows > 0) {
+                while ($row = $result->fetch_assoc()) {
+                    $id    = htmlspecialchars($row['pro_ID']);
+                    $name  = htmlspecialchars($row['name']);
+                    // 若 photo 欄位存放路徑，直接使用；否則預設頭像
+                    $photo = !empty($row['photo']) ? $row['photo'] : 'uploads/default.jpg';
+                    // 建立卡片
+                    echo "<div class='card'>";
+                    echo "<a href='teacher.php?id={$id}'>";
+                    echo "<img src='" . htmlspecialchars($photo) . "' alt='" . \$name . "'>";
+                    echo "<div>" . \$name . "</div>";
+                    echo "</a>";
+                    echo "</div>";
+                }
+            } else {
+                echo "<p>目前尚無教授資料。</p>";
             }
-            $edu_sql->close();
-            ?>
-            </ul>
+            $result->free();
+        } else {
+            echo "<p>資料庫查詢失敗：" . htmlspecialchars($conn->error) . "</p>";
+        }
+        ?>
         </div>
-
-        <div class="section">
-            <h2>專長</h2>
-            <ul>
-            <?php
-            $exp_sql = $conn->prepare("SELECT item FROM expertise WHERE pro_ID = ? ORDER BY expertise_ID");
-            $exp_sql->bind_param("s", $pro_ID);
-            $exp_sql->execute();
-            $exp_res = $exp_sql->get_result();
-            while ($row = $exp_res->fetch_assoc()) {
-                echo '<li>'.htmlspecialchars($row['item']).'</li>';
-            }
-            $exp_sql->close();
-            ?>
-            </ul>
-        </div>
-
-        <div class="section">
-            <h2>聯絡資訊</h2>
-            <ul>
-                <li>信箱：<?php echo htmlspecialchars($prof['email'] ?? '未提供'); ?></li>
-                <li>分機：<?php echo htmlspecialchars($prof['extension'] ?? '未提供'); ?></li>
-            </ul>
-        </div>
-
-        <!-- 其他區塊例如 課表 / 論文 / 經歷 可依需求依樣建置 -->
     </div>
 </body>
 </html>

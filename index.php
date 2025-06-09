@@ -486,7 +486,7 @@ if ($professor) {
                 color: #0066cc;
                 font-weight: bold;
                 padding: 5px 0;
-            }
+            }A
             summary:hover {
                 text-decoration: underline;
             }
