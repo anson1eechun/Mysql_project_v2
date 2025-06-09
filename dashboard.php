@@ -29,33 +29,37 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['add_professor'])) {
 }
 
 // 搜尋功能
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-if ($search === '') {
-    $result = $conn->query("SELECT pro_ID, name, photo FROM professor");
+$search = isset($_GET['search']) ? trim($_GET['search']) : null;
+if ($search !== null) {
+    if ($search === '') {
+        $result = $conn->query("SELECT pro_ID, name, photo FROM professor");
+    } else {
+        $stmt = $conn->prepare("SELECT pro_ID, name, photo FROM professor WHERE name LIKE CONCAT('%', ?, '%') OR pro_ID LIKE CONCAT('%', ?, '%')");
+        $stmt->bind_param("ss", $search, $search);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stmt->close();
+    }
 } else {
-    $stmt = $conn->prepare("SELECT pro_ID, name, photo FROM professor WHERE name LIKE CONCAT('%', ?, '%') OR pro_ID LIKE CONCAT('%', ?, '%')");
-    $stmt->bind_param("ss", $search, $search);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $stmt->close();
+    $result = false; // 預設不顯示任何教授
 }
 ?>
 <style>
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 40px;
-    max-width: 1000px;
-    margin: 40px auto;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* 更小格子 */
+    gap: 18px; /* 更小間距 */
+    max-width: 600px; /* 更小最大寬度 */
+    margin: 20px auto;
 }
 .dashboard-card {
+    padding: 8px 4px 6px 4px;
+    border-radius: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
     background: #fff;
-    border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    padding: 24px 12px 12px 12px;
     transition: box-shadow 0.2s;
     cursor: pointer;
     text-align: center;
@@ -64,15 +68,15 @@ if ($search === '') {
     box-shadow: 0 6px 16px rgba(0,0,0,0.15);
 }
 .dashboard-card img {
-    width: 180px;
-    height: 180px;
+    width: 70px;
+    height: 70px;
     object-fit: cover;
-    border-radius: 12px;
-    margin-bottom: 16px;
+    border-radius: 10px;
+    margin-bottom: 8px;
     background: #f0f0f0;
 }
 .dashboard-card .prof-name {
-    font-size: 1.4rem;
+    font-size: 0.95rem;
     font-weight: 500;
     margin-top: 0;
     margin-bottom: 0;
@@ -81,11 +85,11 @@ if ($search === '') {
 @media (max-width: 600px) {
     .dashboard-grid {
         grid-template-columns: 1fr;
-        gap: 24px;
+        gap: 8px;
     }
     .dashboard-card img {
-        width: 120px;
-        height: 120px;
+        width: 48px;
+        height: 48px;
     }
 }
 </style>
@@ -102,14 +106,18 @@ if ($search === '') {
 
 <div class="dashboard-grid">
 <?php
-while ($row = $result->fetch_assoc()) {
-    $photo = !empty($row["photo"]) ? htmlspecialchars($row["photo"]) : "uploads/teacher_photo.jpg";
-    $name = htmlspecialchars($row["name"]);
-    $pro_ID = urlencode($row["pro_ID"]);
-    echo "<div class='dashboard-card' onclick=\"window.location.href='main_v3.php?id=$pro_ID'\">";
-    echo "<img src='$photo' alt='$name'>";
-    echo "<div class='prof-name'>$name</div>";
-    echo "</div>";
+if ($result && $result instanceof mysqli_result && $result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $photo = !empty($row["photo"]) ? htmlspecialchars($row["photo"]) : "uploads/teacher_photo.jpg";
+        $name = htmlspecialchars($row["name"]);
+        $pro_ID = urlencode($row["pro_ID"]);
+        echo "<div class='dashboard-card' onclick=\"window.location.href='main_v3.php?id=$pro_ID'\">";
+        echo "<img src='$photo' alt='$name'>";
+        echo "<div class='prof-name'>$name</div>";
+        echo "</div>";
+    }
+} elseif ($result && $result instanceof mysqli_result && $result->num_rows === 0) {
+    echo '<div style="grid-column: 1 / -1; text-align:center; color:#888; font-size:1.1rem;">查無教授資料</div>';
 }
 ?>
 </div>
