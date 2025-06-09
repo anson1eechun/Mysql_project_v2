@@ -67,7 +67,7 @@ while ($row = $result->fetch_assoc()) {
     $photo = !empty($row["photo"]) ? htmlspecialchars($row["photo"]) : "uploads/teacher_photo.jpg";
     $name = htmlspecialchars($row["name"]);
     $pro_ID = urlencode($row["pro_ID"]);
-    echo "<div class='dashboard-card' onclick=\"window.location.href='main.php?id=$pro_ID'\">";
+    echo "<div class='dashboard-card' onclick=\"window.location.href='main_v3.php?id=$pro_ID'\">";
     echo "<img src='$photo' alt='$name'>";
     echo "<div class='prof-name'>$name</div>";
     echo "</div>";
