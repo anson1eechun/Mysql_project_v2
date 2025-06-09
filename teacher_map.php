@@ -32,7 +32,7 @@ $result = $conn->query($sql);
             color: #003366;
             margin-bottom: 40px;
         }
-        /* Grid 版面 */
+        /* Grid 版面配置 */
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -80,17 +80,18 @@ $result = $conn->query($sql);
         if ($result && $result->num_rows > 0) {
             while ($row = $result->fetch_assoc()) {
                 // 避免未定義 key 與 null 警告
-                $pro_ID = htmlspecialchars($row['pro_ID'] ?? '');
-                $name   = htmlspecialchars($row['name']     ?? '');
-                $position  = htmlspecialchars($row['position']    ?? '');
-                $intro  = mb_substr(strip_tags($row['introduction'] ?? ''), 0, 50, 'UTF-8') . '...';
-                $photo  = htmlspecialchars($row['photo']    ?? '');
-                // 整張卡片可點擊，導向 main.php
-                echo "<a class='card' href='main.php?pro_ID={$pro_ID}'>";
-                  echo "<img src='uploads/{$photo}' alt='{$name}'>";
-                  echo "<h3>{$name}</h3>";
-                  echo "<p>{$position}</p>";
-                  echo "<p>{$intro}</p>";
+                $pro_ID   = htmlspecialchars($row['pro_ID']       ?? '');
+                $name     = htmlspecialchars($row['name']         ?? '');
+                $position = htmlspecialchars($row['position']     ?? '');
+                $intro    = mb_substr(strip_tags($row['introduction'] ?? ''), 0, 50, 'UTF-8') . '...';
+                $photo    = htmlspecialchars($row['photo']        ?? '');
+
+                // 整張卡片可點擊，導向 main.php?id=...
+                echo "<a class='card' href='main.php?id={$pro_ID}'>";
+                echo "<img src='uploads/{$photo}' alt='{$name}'>";
+                echo "<h3>{$name}</h3>";
+                echo "<p>{$position}</p>";
+                echo "<p>{$intro}</p>";
                 echo "</a>";
             }
         } else {
