@@ -344,23 +344,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $class = $_POST['class'];
             $time = $_POST['time'];
 
-            // 生成新的 courses_ID
-            $stmt = $conn->prepare("SELECT MAX(CAST(SUBSTRING(courses_ID, 2) AS UNSIGNED)) as max_id FROM courses WHERE courses_ID LIKE 'E%'");
+            // 衝突檢查：同一教授同一時段不可重複排課
+            $stmt = $conn->prepare("SELECT courses_ID FROM courses WHERE pro_ID = ? AND time = ?");
+            $stmt->bind_param("ss", $pro_ID, $time);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $row = $result->fetch_assoc();
-            $next_id = ($row['max_id'] ?? 0) + 1;
-            $courses_ID = 'E' . str_pad($next_id, 3, '0', STR_PAD_LEFT);
-
-            $stmt = $conn->prepare("INSERT INTO courses (courses_ID, pro_ID, name, class, time) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssss", $courses_ID, $pro_ID, $name, $class, $time);
-
-            if ($stmt->execute()) {
-                $message = "課程新增成功！";
+            $stmt->store_result();
+            if ($stmt->num_rows > 0) {
+                $error = "新增失敗：該時段已有課程，請選擇其他時段。";
+                $stmt->close();
             } else {
-                throw new Exception("新增課程失敗：" . $stmt->error);
+                $stmt->close();
+                // 生成新的 courses_ID
+                $stmt = $conn->prepare("SELECT MAX(CAST(SUBSTRING(courses_ID, 2) AS UNSIGNED)) as max_id FROM courses WHERE courses_ID LIKE 'E%'");
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $row = $result->fetch_assoc();
+                $next_id = ($row['max_id'] ?? 0) + 1;
+                $courses_ID = 'E' . str_pad($next_id, 3, '0', STR_PAD_LEFT);
+
+                $stmt = $conn->prepare("INSERT INTO courses (courses_ID, pro_ID, name, class, time) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param("sssss", $courses_ID, $pro_ID, $name, $class, $time);
+
+                if ($stmt->execute()) {
+                    $message = "課程新增成功！";
+                } else {
+                    throw new Exception("新增課程失敗：" . $stmt->error);
+                }
+                $stmt->close();
             }
-            $stmt->close();
         }
 
         // 處理更新課程
@@ -370,171 +381,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $class = $_POST['class'];
             $time = $_POST['time'];
 
-            $stmt = $conn->prepare("UPDATE courses SET name = ?, class = ?, time = ? WHERE courses_ID = ?");
-            $stmt->bind_param("ssss", $name, $class, $time, $courses_ID);
-
-            if ($stmt->execute()) {
-                $message = "課程更新成功！";
-            } else {
-                throw new Exception("更新課程失敗：" . $stmt->error);
-            }
-            $stmt->close();
-        }
-
-        // 處理刪除課程
-        if (isset($_POST['delete_course'])) {
-            $courses_ID = $_POST['courses_ID'];
-
-            $stmt = $conn->prepare("DELETE FROM courses WHERE courses_ID = ?");
-            $stmt->bind_param("s", $courses_ID);
-
-            if ($stmt->execute()) {
-                $message = "課程刪除成功！";
-            } else {
-                throw new Exception("刪除課程失敗：" . $stmt->error);
-            }
-            $stmt->close();
-        }
-
-        // 處理新增獎項
-        if (isset($_POST['add_award'])) {
-            $pro_ID = $_POST['pro_ID'];
-            $type = $_POST['type'];
-            $title = $_POST['title'];
-            $organizer = $_POST['organizer'];
-            $date = $_POST['date'];
-            $topic = $_POST['topic'];
-            $student_list = $_POST['student_list'];
-
-            // 生成新的 award_ID
-            $stmt = $conn->prepare("SELECT MAX(CAST(SUBSTRING(award_ID, 2) AS UNSIGNED)) as max_id FROM award WHERE award_ID LIKE 'H%'");
+            // 衝突檢查：同一教授同一時段不可重複排課（排除自己）
+            $stmt = $conn->prepare("SELECT courses_ID FROM courses WHERE pro_ID = ? AND time = ? AND courses_ID != ?");
+            $stmt->bind_param("sss", $pro_ID, $time, $courses_ID);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $row = $result->fetch_assoc();
-            $next_id = ($row['max_id'] ?? 0) + 1;
-            $award_ID = 'I' . str_pad($next_id, 3, '0', STR_PAD_LEFT);
-
-            $stmt = $conn->prepare("INSERT INTO award (award_ID, pro_ID, type, title, organizer, date, topic, student_list) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssssss", $award_ID, $pro_ID, $type, $title, $organizer, $date, $topic, $student_list);
-
-            if ($stmt->execute()) {
-                $message = "獎項新增成功！";
+            $stmt->store_result();
+            if ($stmt->num_rows > 0) {
+                $error = "更新失敗：該時段已有課程，請選擇其他時段。";
+                $stmt->close();
             } else {
-                throw new Exception("新增獎項失敗：" . $stmt->error);
+                $stmt->close();
+                $stmt = $conn->prepare("UPDATE courses SET name = ?, class = ?, time = ? WHERE courses_ID = ?");
+                $stmt->bind_param("ssss", $name, $class, $time, $courses_ID);
+
+                if ($stmt->execute()) {
+                    $message = "課程更新成功！";
+                } else {
+                    throw new Exception("更新課程失敗：" . $stmt->error);
+                }
+                $stmt->close();
             }
-            $stmt->close();
-        }
-
-        // 處理更新獎項
-        if (isset($_POST['update_award'])) {
-            $award_ID = $_POST['award_ID'];
-            $type = $_POST['type'];
-            $title = $_POST['title'];
-            $organizer = $_POST['organizer'];
-            $date = $_POST['date'];
-            $topic = $_POST['topic'];
-            $student_list = $_POST['student_list'];
-
-            $stmt = $conn->prepare("UPDATE award SET type = ?, title = ?, organizer = ?, date = ?, topic = ?, student_list = ? WHERE award_ID = ?");
-            $stmt->bind_param("sssssss", $type, $title, $organizer, $date, $topic, $student_list, $award_ID);
-
-            if ($stmt->execute()) {
-                $message = "獎項更新成功！";
-            } else {
-                throw new Exception("更新獎項失敗：" . $stmt->error);
-            }
-            $stmt->close();
-        }
-
-        // 處理新增演講
-        if (isset($_POST['add_lecture'])) {
-            $pro_ID = $_POST['pro_ID'];
-            $title = $_POST['title'];
-            $location = $_POST['location'];
-            $date = $_POST['date'];
-
-            // 生成新的 lecture_ID
-            $stmt = $conn->prepare("SELECT MAX(CAST(SUBSTRING(lecture_ID, 2) AS UNSIGNED)) as max_id FROM lecture WHERE lecture_ID LIKE 'J%'");
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $row = $result->fetch_assoc();
-            $next_id = ($row['max_id'] ?? 0) + 1;
-            $lecture_ID = 'J' . str_pad($next_id, 3, '0', STR_PAD_LEFT);
-
-            $stmt = $conn->prepare("INSERT INTO lecture (lecture_ID, pro_ID, title, location, date) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssss", $lecture_ID, $pro_ID, $title, $location, $date);
-
-            if ($stmt->execute()) {
-                $message = "演講新增成功！";
-            } else {
-                throw new Exception("新增演講失敗：" . $stmt->error);
-            }
-            $stmt->close();
-        }
-
-        // 處理更新演講
-        if (isset($_POST['update_lecture'])) {
-            $lecture_ID = $_POST['lecture_ID'];
-            $title = $_POST['title'];
-            $location = $_POST['location'];
-            $date = $_POST['date'];
-
-            $stmt = $conn->prepare("UPDATE lecture SET title = ?, location = ?, date = ? WHERE lecture_ID = ?");
-            $stmt->bind_param("ssss", $title, $location, $date, $lecture_ID);
-
-            if ($stmt->execute()) {
-                $message = "演講更新成功！";
-            } else {
-                throw new Exception("更新演講失敗：" . $stmt->error);
-            }
-            $stmt->close();
-        }
-
-        // 處理新增專案
-        if (isset($_POST['add_project'])) {
-            $pro_ID = $_POST['pro_ID'];
-            $title = $_POST['title'];
-            $description = $_POST['description'];
-            $start_date = $_POST['start_date'];
-            $end_date = $_POST['end_date'];
-
-            // 生成新的 project_ID
-            $stmt = $conn->prepare("SELECT MAX(CAST(SUBSTRING(project_ID, 2) AS UNSIGNED)) as max_id FROM project WHERE project_ID LIKE 'K%'");
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $row = $result->fetch_assoc();
-            $next_id = ($row['max_id'] ?? 0) + 1;
-            $project_ID = 'K' . str_pad($next_id, 3, '0', STR_PAD_LEFT);
-
-            $stmt = $conn->prepare("INSERT INTO project (project_ID, pro_ID, title, description, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssss", $project_ID, $pro_ID, $title, $description, $start_date, $end_date);
-
-            if ($stmt->execute()) {
-                $message = "專案新增成功！";
-            } else {
-                throw new Exception("新增專案失敗：" . $stmt->error);
-            }
-            $stmt->close();
-        }
-
-        // 處理更新專案
-        if (isset($_POST['update_project'])) {
-            $project_ID = $_POST['project_ID'];
-            $category = $_POST['category'];
-            $name = $_POST['name'];
-            $date = $_POST['date'];
-            $number = $_POST['number'];
-            $role = $_POST['role'];
-
-            $stmt = $conn->prepare("UPDATE project SET category = ?, name = ?, date = ?, number = ?, role = ? WHERE project_ID = ?");
-            $stmt->bind_param("ssssss", $category, $name, $date, $number, $role, $project_ID);
-
-            if ($stmt->execute()) {
-                $message = "專案更新成功！";
-            } else {
-                throw new Exception("更新專案失敗：" . $stmt->error);
-            }
-            $stmt->close();
         }
 
     } catch (Exception $e) {
@@ -920,7 +786,7 @@ $stmt->close();
     <!-- 側邊導覽選單 -->
     <div id="sideNav" style="display:none;position:fixed;top:0;left:0;width:220px;height:100vh;background:#fff;box-shadow:2px 0 8px rgba(0,0,0,0.08);z-index:2100;padding:32px 0 0 0;">
         <ul style="list-style:none;padding:0 24px;">
-            <li style="margin-bottom:18px;"><a href="#basic-info">基本資料</a></li>
+            <li style="margin-bottom:18px;"><a href="#basic-info">基本資料（含聯絡資訊）</a></li>
             <li style="margin-bottom:18px;"><a href="#education">學歷</a></li>
             <li style="margin-bottom:18px;"><a href="#expertise">專長</a></li>
             <li style="margin-bottom:18px;"><a href="#journal">期刊論文</a></li>
@@ -930,7 +796,6 @@ $stmt->close();
             <li style="margin-bottom:18px;"><a href="#award">獎項</a></li>
             <li style="margin-bottom:18px;"><a href="#lecture">演講</a></li>
             <li style="margin-bottom:18px;"><a href="#project">專案</a></li>
-            <li style="margin-bottom:18px;"><a href="#contact">聯絡資訊</a></li>
         </ul>
     </div>
     <!-- 遮罩 -->
@@ -950,7 +815,7 @@ $stmt->close();
         
         <!-- 基本資料區塊 -->
         <div class="section" id="basic-info">
-            <h2>基本資料</h2>
+            <h2>基本資料 <span style="font-size:1rem;color:#888;">（含聯絡資訊）</span></h2>
             <form method="post" enctype="multipart/form-data">
                 <input type="hidden" name="pro_ID" value="<?php echo $professor['pro_ID']; ?>">
                 
@@ -2009,19 +1874,22 @@ $stmt->close();
                 document.getElementById('sideNav').style.display = 'none';
                 document.getElementById('sideNavMask').style.display = 'none';
             };
-            // 點擊側邊選單連結自動關閉側邊欄
+            // 點擊側邊選單連結自動關閉側邊欄並跳轉
             Array.from(document.querySelectorAll('#sideNav a')).forEach(function(link){
-                link.onclick = function() {
+                link.onclick = function(e) {
                     document.getElementById('sideNav').style.display = 'none';
                     document.getElementById('sideNavMask').style.display = 'none';
+                    // 滾動到對應區塊
+                    var target = document.querySelector(this.getAttribute('href'));
+                    if(target) {
+                        setTimeout(function(){
+                            target.scrollIntoView({behavior:'smooth'});
+                        }, 100);
+                    }
+                    e.preventDefault();
                 };
             });
         </script>
-
-        <div class="section">
-            <h2>聯絡資訊</h2>
-            <!-- 聯絡資訊部分 -->
-        </div>
     </div>
 </body>
 </html>
