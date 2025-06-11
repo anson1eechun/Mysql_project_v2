@@ -253,6 +253,7 @@ INSERT INTO `lecture` (`lecture_ID`, `title`, `location`, `date`, `pro_ID`) VALU
 
 CREATE TABLE `professor` (
   `pro_ID` varchar(50) NOT NULL COMMENT '教授ID',
+  `role` varchar(50) DEFAULT NULL COMMENT '身分',
   `name` varchar(50) DEFAULT NULL COMMENT '教授姓名',
   `position` varchar(50) DEFAULT NULL COMMENT '職位',
   `introduction` text DEFAULT NULL COMMENT '自介',
@@ -266,8 +267,8 @@ CREATE TABLE `professor` (
 -- 傾印資料表的資料 `professor`
 --
 
-INSERT INTO `professor` (`pro_ID`, `name`, `position`, `introduction`, `email`, `phone`, `office`, `photo`) VALUES
-('A001', '林哲維', '助理教授', '林老師畢業於國立中正大學資訊工程學系博士班，主要的研究領域包含人工智能、自然語言處理、中文故事生成以及電腦視覺等識別方法。在人工智慧與自然語言的研究主要專注在中文內文的解析與強化模型對句子的理解能力，並透過深度學習的方式來進行長短句子的生成與對話等應用。電腦視覺研究則是專注於輔助醫療等實際應用，在2020年林老師曾與嘉義大林慈濟醫院以及嘉義基督教醫院合作，利用影像辨識與深度學習的方法來建立口罩辨識系統以及營養機器人的實際應用。', 'jhewlin@fcu.edu.tw', '0424517250#3758', '資電238-1', NULL);
+INSERT INTO `professor` (`pro_ID`, `role`, `name`, `position`, `introduction`, `email`, `phone`, `office`, `photo`) VALUES
+('A001', '專任教師', '林哲維', '助理教授', '林老師畢業於國立中正大學資訊工程學系博士班，主要的研究領域包含人工智能、自然語言處理、中文故事生成以及電腦視覺等識別方法。在人工智慧與自然語言的研究主要專注在中文內文的解析與強化模型對句子的理解能力，並透過深度學習的方式來進行長短句子的生成與對話等應用。電腦視覺研究則是專注於輔助醫療等實際應用，在2020年林老師曾與嘉義大林慈濟醫院以及嘉義基督教醫院合作，利用影像辨識與深度學習的方法來建立口罩辨識系統以及營養機器人的實際應用。', 'jhewlin@fcu.edu.tw', '0424517250#3758', '資電238-1', NULL);
 
 -- --------------------------------------------------------
 

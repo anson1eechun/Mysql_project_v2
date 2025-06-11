@@ -26,15 +26,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (isset($_POST['update_basic'])) {
             // 更新基本資料
             $pro_ID = $_POST['pro_ID'];
+            $role = isset($_POST['role']) ? $_POST['role'] : '';
             $name = $_POST['name'];
             $position = $_POST['position'];
             $introduction = $_POST['introduction'];
             $email = $_POST['email'];
             $phone = $_POST['phone'];
             $office = $_POST['office'];
+            $remove_photo = isset($_POST['remove_photo']) ? $_POST['remove_photo'] : '0';
 
-            $stmt = $conn->prepare("UPDATE professor SET name = ?, position = ?, introduction = ?, email = ?, phone = ?, office = ? WHERE pro_ID = ?");
-            $stmt->bind_param("sssssss", $name, $position, $introduction, $email, $phone, $office, $pro_ID);
+            $stmt = $conn->prepare("UPDATE professor SET role = ?, name = ?, position = ?, introduction = ?, email = ?, phone = ?, office = ? WHERE pro_ID = ?");
+            $stmt->bind_param("ssssssss", $role, $name, $position, $introduction, $email, $phone, $office, $pro_ID);
 
             if ($stmt->execute()) {
                 $message = "基本資料更新成功！";
@@ -42,6 +44,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 throw new Exception("更新基本資料失敗：" . $stmt->error);
             }
             $stmt->close();
+
+            // 處理移除照片
+            if ($remove_photo === '1') {
+                $stmt2 = $conn->prepare("UPDATE professor SET photo = 'uploads/none.jpg' WHERE pro_ID = ?");
+                $stmt2->bind_param("s", $pro_ID);
+                $stmt2->execute();
+                $stmt2->close();
+                $professor['photo'] = 'uploads/none.jpg';
+            }
         }
 
         // 處理照片上傳
@@ -342,37 +353,151 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $pro_ID = $_POST['pro_ID'];
             $name = $_POST['name'];
             $class = $_POST['class'];
-            $time = $_POST['time'];
+            $day = $_POST['day'];
+            $periods = isset($_POST['periods']) ? $_POST['periods'] : [];
+            $times = [];
+            foreach ($periods as $p) {
+                $times[] = $day . $p;
+            }
+            $time = implode(',', $times);
 
-            // 生成新的 courses_ID
-            $stmt = $conn->prepare("SELECT MAX(CAST(SUBSTRING(courses_ID, 2) AS UNSIGNED)) as max_id FROM courses WHERE courses_ID LIKE 'E%'");
+            // 先檢查是否有同名同班級課程
+            $stmt = $conn->prepare("SELECT courses_ID, time FROM courses WHERE pro_ID = ? AND name = ? AND class = ?");
+            $stmt->bind_param("sss", $pro_ID, $name, $class);
             $stmt->execute();
             $result = $stmt->get_result();
-            $row = $result->fetch_assoc();
-            $next_id = ($row['max_id'] ?? 0) + 1;
-            $courses_ID = 'E' . str_pad($next_id, 3, '0', STR_PAD_LEFT);
-
-            $stmt = $conn->prepare("INSERT INTO courses (courses_ID, pro_ID, name, class, time) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssss", $courses_ID, $pro_ID, $name, $class, $time);
-
-            if ($stmt->execute()) {
-                $message = "課程新增成功！";
+            if ($row = $result->fetch_assoc()) {
+                // 有同名同班級課程，合併時段
+                $courses_ID = $row['courses_ID'];
+                $old_times = array_filter(array_map('trim', explode(',', $row['time'])));
+                $new_times = array_filter(array_map('trim', explode(',', $time)));
+                $merged_times = array_unique(array_merge($old_times, $new_times));
+                sort($merged_times); // 讓時段排序
+                $merged_time_str = implode(',', $merged_times);
+                $stmt->close();
+                $stmt = $conn->prepare("UPDATE courses SET time = ? WHERE courses_ID = ?");
+                $stmt->bind_param("ss", $merged_time_str, $courses_ID);
+                if ($stmt->execute()) {
+                    $message = "課程時段已合併更新！";
+                } else {
+                    throw new Exception("合併課程時段失敗：" . $stmt->error);
+                }
+                $stmt->close();
             } else {
-                throw new Exception("新增課程失敗：" . $stmt->error);
+                $stmt->close();
+                // 取得該教授所有已排課的時段、課名、班級（只查詢資料庫原有課程，不含本次新增的內容）
+                $stmt = $conn->prepare("SELECT time, name, class FROM courses WHERE pro_ID = ?");
+                $stmt->bind_param("s", $pro_ID);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $time_map = [];
+                while ($row = $result->fetch_assoc()) {
+                    $exist_times = preg_split('/[\n,]+/', $row['time'], -1, PREG_SPLIT_NO_EMPTY);
+                    foreach ($exist_times as $t) {
+                        $t = trim($t);
+                        if (!isset($time_map[$t])) $time_map[$t] = [];
+                        $time_map[$t][] = [
+                            'name' => mb_strtolower(trim($row['name'])),
+                            'class' => mb_strtolower(trim($row['class']))
+                        ];
+                    }
+                }
+                $stmt->close();
+
+                $name_norm = mb_strtolower(trim($name));
+                $class_norm = mb_strtolower(trim($class));
+                foreach ($times as $t) {
+                    if (isset($time_map[$t])) {
+                        $has_diff_name = false;
+                        $has_same_name_same_class = false;
+                        foreach ($time_map[$t] as $exist) {
+                            if ($exist['name'] !== $name_norm) {
+                                $has_diff_name = true;
+                            } elseif ($exist['name'] === $name_norm && $exist['class'] === $class_norm) {
+                                $has_same_name_same_class = true;
+                            }
+                        }
+                        if ($has_diff_name) {
+                            throw new Exception("新增失敗：時段『" . htmlspecialchars($t) . "』已有排課（課名不同），請避免撞課。");
+                        }
+                        if ($has_same_name_same_class) {
+                            throw new Exception("新增失敗：時段『" . htmlspecialchars($t) . "』已有相同課名與班級的課程，請勿重複。");
+                        }
+                    }
+                }
+
+                // 生成新的 courses_ID
+                $stmt = $conn->prepare("SELECT MAX(CAST(SUBSTRING(courses_ID, 2) AS UNSIGNED)) as max_id FROM courses WHERE courses_ID LIKE 'E%'");
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $row = $result->fetch_assoc();
+                $next_id = ($row['max_id'] ?? 0) + 1;
+                $courses_ID = 'E' . str_pad($next_id, 3, '0', STR_PAD_LEFT);
+
+                $stmt = $conn->prepare("INSERT INTO courses (courses_ID, pro_ID, name, class, time) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param("sssss", $courses_ID, $pro_ID, $name, $class, $time);
+                if (!$stmt->execute()) {
+                    throw new Exception("新增課程失敗：" . $stmt->error);
+                }
+                $stmt->close();
+                $message = "課程新增成功！";
             }
-            $stmt->close();
         }
 
         // 處理更新課程
         if (isset($_POST['update_course'])) {
             $courses_ID = $_POST['courses_ID'];
+            $pro_ID = $professor['pro_ID'];
             $name = $_POST['name'];
             $class = $_POST['class'];
             $time = $_POST['time'];
 
+            // 取得該教授所有已排課的時段、課名、班級（排除本課程）
+            $stmt = $conn->prepare("SELECT time, name, class FROM courses WHERE pro_ID = ? AND courses_ID != ?");
+            $stmt->bind_param("ss", $pro_ID, $courses_ID);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $time_map = [];
+            while ($row = $result->fetch_assoc()) {
+                $exist_times = preg_split('/[\n,]+/', $row['time'], -1, PREG_SPLIT_NO_EMPTY);
+                foreach ($exist_times as $t) {
+                    $t = trim($t);
+                    if (!isset($time_map[$t])) $time_map[$t] = [];
+                    $time_map[$t][] = [
+                        'name' => mb_strtolower(trim($row['name'])),
+                        'class' => mb_strtolower(trim($row['class']))
+                    ];
+                }
+            }
+            $stmt->close();
+
+            $name_norm = mb_strtolower(trim($name));
+            $class_norm = mb_strtolower(trim($class));
+            $times = preg_split('/[\n,]+/', $time, -1, PREG_SPLIT_NO_EMPTY);
+            foreach ($times as $t_raw) {
+                $t = trim($t_raw);
+                if ($t === '') continue;
+                if (isset($time_map[$t])) {
+                    $has_diff_name = false;
+                    $has_same_name_same_class = false;
+                    foreach ($time_map[$t] as $exist) {
+                        if ($exist['name'] !== $name_norm) {
+                            $has_diff_name = true;
+                        } elseif ($exist['name'] === $name_norm && $exist['class'] === $class_norm) {
+                            $has_same_name_same_class = true;
+                        }
+                    }
+                    if ($has_diff_name) {
+                        throw new Exception("編輯失敗：時段『" . htmlspecialchars($t) . "』已有排課（課名不同），請避免撞課。");
+                    }
+                    if ($has_same_name_same_class) {
+                        throw new Exception("編輯失敗：時段『" . htmlspecialchars($t) . "』已有相同課名與班級的課程，請勿重複。");
+                    }
+                }
+            }
+
             $stmt = $conn->prepare("UPDATE courses SET name = ?, class = ?, time = ? WHERE courses_ID = ?");
             $stmt->bind_param("ssss", $name, $class, $time, $courses_ID);
-
             if ($stmt->execute()) {
                 $message = "課程更新成功！";
             } else {
@@ -552,14 +677,14 @@ $result_professor = $stmt->get_result();
 $professor = $result_professor->fetch_assoc();
 $stmt->close();
 
-// 查詢學歷 (包含搜尋功能)
+// 查詢學歷 (多欄位搜尋)
 $search_edu_id = isset($_GET['search_edu_id']) ? $_GET['search_edu_id'] : '';
-$where_clause_edu = $search_edu_id ? "AND edu_ID LIKE ?" : "";
+$where_clause_edu = $search_edu_id ? "AND (edu_ID LIKE ? OR department LIKE ? OR degree LIKE ?)" : "";
 $sql_education = "SELECT * FROM education WHERE pro_ID = ? $where_clause_edu ORDER BY edu_ID";
 $stmt = $conn->prepare($sql_education);
 if ($search_edu_id) {
     $search_pattern_edu = "%$search_edu_id%";
-    $stmt->bind_param("ss", $pro_ID, $search_pattern_edu);
+    $stmt->bind_param("ssss", $pro_ID, $search_pattern_edu, $search_pattern_edu, $search_pattern_edu);
 } else {
     $stmt->bind_param("s", $pro_ID);
 }
@@ -567,14 +692,14 @@ $stmt->execute();
 $result_education = $stmt->get_result();
 $stmt->close();
 
-// 查詢專長 (包含搜尋功能)
+// 查詢專長 (多欄位搜尋)
 $search_expertise_id = isset($_GET['search_expertise_id']) ? $_GET['search_expertise_id'] : '';
-$where_clause_expertise = $search_expertise_id ? "AND expertise_ID LIKE ?" : "";
+$where_clause_expertise = $search_expertise_id ? "AND (expertise_ID LIKE ? OR item LIKE ?)" : "";
 $sql_expertise = "SELECT * FROM expertise WHERE pro_ID = ? $where_clause_expertise ORDER BY expertise_ID";
 $stmt = $conn->prepare($sql_expertise);
 if ($search_expertise_id) {
     $search_pattern_expertise = "%$search_expertise_id%";
-    $stmt->bind_param("ss", $pro_ID, $search_pattern_expertise);
+    $stmt->bind_param("sss", $pro_ID, $search_pattern_expertise, $search_pattern_expertise);
 } else {
     $stmt->bind_param("s", $pro_ID);
 }
@@ -582,14 +707,14 @@ $stmt->execute();
 $result_expertise = $stmt->get_result();
 $stmt->close();
 
-// 查詢期刊論文 (包含搜尋功能)
+// 查詢期刊論文 (多欄位搜尋)
 $search_jour_id = isset($_GET['search_jour_id']) ? $_GET['search_jour_id'] : '';
-$where_clause_jour = $search_jour_id ? "AND jour_ID LIKE ?" : "";
+$where_clause_jour = $search_jour_id ? "AND (jour_ID LIKE ? OR jour_character LIKE ? OR title LIKE ? OR name LIKE ?)" : "";
 $sql_journal = "SELECT * FROM journal WHERE pro_ID = ? $where_clause_jour ORDER BY date DESC";
 $stmt = $conn->prepare($sql_journal);
 if ($search_jour_id) {
     $search_pattern_jour = "%$search_jour_id%";
-    $stmt->bind_param("ss", $pro_ID, $search_pattern_jour);
+    $stmt->bind_param("sssss", $pro_ID, $search_pattern_jour, $search_pattern_jour, $search_pattern_jour, $search_pattern_jour);
 } else {
     $stmt->bind_param("s", $pro_ID);
 }
@@ -597,14 +722,14 @@ $stmt->execute();
 $result_journal = $stmt->get_result();
 $stmt->close();
 
-// 查詢會議論文 (包含搜尋功能)
+// 查詢會議論文 (多欄位搜尋)
 $search_conf_id = isset($_GET['search_conf_id']) ? $_GET['search_conf_id'] : '';
-$where_clause_conf = $search_conf_id ? "AND conf_ID LIKE ?" : "";
+$where_clause_conf = $search_conf_id ? "AND (conf_ID LIKE ? OR conf_character LIKE ? OR title LIKE ? OR name LIKE ? OR location LIKE ?)" : "";
 $sql_conference = "SELECT * FROM conference WHERE pro_ID = ? $where_clause_conf ORDER BY date DESC";
 $stmt = $conn->prepare($sql_conference);
 if ($search_conf_id) {
     $search_pattern_conf = "%$search_conf_id%";
-    $stmt->bind_param("ss", $pro_ID, $search_pattern_conf);
+    $stmt->bind_param("ssssss", $pro_ID, $search_pattern_conf, $search_pattern_conf, $search_pattern_conf, $search_pattern_conf, $search_pattern_conf);
 } else {
     $stmt->bind_param("s", $pro_ID);
 }
@@ -612,14 +737,14 @@ $stmt->execute();
 $result_conference = $stmt->get_result();
 $stmt->close();
 
-// 查詢經歷 (包含搜尋功能)
+// 查詢經歷 (多欄位搜尋)
 $search_experience_id = isset($_GET['search_experience_id']) ? $_GET['search_experience_id'] : '';
-$where_clause_experience = $search_experience_id ? "AND experience_ID LIKE ?" : "";
+$where_clause_experience = $search_experience_id ? "AND (experience_ID LIKE ? OR category LIKE ? OR department LIKE ? OR position LIKE ?)" : "";
 $sql_experience = "SELECT * FROM experience WHERE pro_ID = ? $where_clause_experience ORDER BY experience_ID";
 $stmt = $conn->prepare($sql_experience);
 if ($search_experience_id) {
     $search_pattern_experience = "%$search_experience_id%";
-    $stmt->bind_param("ss", $pro_ID, $search_pattern_experience);
+    $stmt->bind_param("sssss", $pro_ID, $search_pattern_experience, $search_pattern_experience, $search_pattern_experience, $search_pattern_experience);
 } else {
     $stmt->bind_param("s", $pro_ID);
 }
@@ -627,29 +752,30 @@ $stmt->execute();
 $result_experience = $stmt->get_result();
 $stmt->close();
 
-// 處理搜尋
+// 查詢課程 (多欄位搜尋)
 $search_id = isset($_GET['search_id']) ? $_GET['search_id'] : '';
-$where_clause = $search_id ? "WHERE courses_ID LIKE ?" : "";
-
-// 查詢課程資料
-$sql = "SELECT * FROM courses $where_clause ORDER BY courses_ID";
-$stmt = $conn->prepare($sql);
-if ($search_id) {
+if (!empty($search_id)) {
+    $sql = "SELECT * FROM courses WHERE pro_ID = ? AND (courses_ID LIKE ? OR name LIKE ? OR class LIKE ? OR time LIKE ?) ORDER BY courses_ID";
+    $stmt = $conn->prepare($sql);
     $search_pattern = "%$search_id%";
-    $stmt->bind_param("s", $search_pattern);
+    $stmt->bind_param("sssss", $pro_ID, $search_pattern, $search_pattern, $search_pattern, $search_pattern);
+} else {
+    $sql = "SELECT * FROM courses WHERE pro_ID = ? ORDER BY courses_ID";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $pro_ID);
 }
 $stmt->execute();
 $result_courses = $stmt->get_result();
 $stmt->close();
 
-// 查詢獎項 (包含搜尋功能)
+// 查詢獎項 (多欄位搜尋)
 $search_award_id = isset($_GET['search_award_id']) ? $_GET['search_award_id'] : '';
-$where_clause_award = $search_award_id ? "AND award_ID LIKE ?" : "";
+$where_clause_award = $search_award_id ? "AND (award_ID LIKE ? OR type LIKE ? OR title LIKE ? OR organizer LIKE ?)" : "";
 $sql_award = "SELECT * FROM award WHERE pro_ID = ? $where_clause_award ORDER BY award_ID";
 $stmt = $conn->prepare($sql_award);
 if ($search_award_id) {
     $search_pattern_award = "%$search_award_id%";
-    $stmt->bind_param("ss", $pro_ID, $search_pattern_award);
+    $stmt->bind_param("sssss", $pro_ID, $search_pattern_award, $search_pattern_award, $search_pattern_award, $search_pattern_award);
 } else {
     $stmt->bind_param("s", $pro_ID);
 }
@@ -657,14 +783,14 @@ $stmt->execute();
 $result_award = $stmt->get_result();
 $stmt->close();
 
-// 查詢演講 (包含搜尋功能)
+// 查詢演講 (多欄位搜尋)
 $search_lecture_id = isset($_GET['search_lecture_id']) ? $_GET['search_lecture_id'] : '';
-$where_clause_lecture = $search_lecture_id ? "AND lecture_ID LIKE ?" : "";
+$where_clause_lecture = $search_lecture_id ? "AND (lecture_ID LIKE ? OR title LIKE ? OR location LIKE ?)" : "";
 $sql_lecture = "SELECT * FROM lecture WHERE pro_ID = ? $where_clause_lecture ORDER BY lecture_ID";
 $stmt = $conn->prepare($sql_lecture);
 if ($search_lecture_id) {
     $search_pattern_lecture = "%$search_lecture_id%";
-    $stmt->bind_param("ss", $pro_ID, $search_pattern_lecture);
+    $stmt->bind_param("ssss", $pro_ID, $search_pattern_lecture, $search_pattern_lecture, $search_pattern_lecture);
 } else {
     $stmt->bind_param("s", $pro_ID);
 }
@@ -672,14 +798,14 @@ $stmt->execute();
 $result_lecture = $stmt->get_result();
 $stmt->close();
 
-// 查詢專案 (包含搜尋功能)
+// 查詢專案 (多欄位搜尋)
 $search_project_id = isset($_GET['search_project_id']) ? $_GET['search_project_id'] : '';
-$where_clause_project = $search_project_id ? "AND project_ID LIKE ?" : "";
+$where_clause_project = $search_project_id ? "AND (project_ID LIKE ? OR category LIKE ? OR name LIKE ? OR number LIKE ? OR role LIKE ?)" : "";
 $sql_project = "SELECT * FROM project WHERE pro_ID = ? $where_clause_project ORDER BY project_ID";
 $stmt = $conn->prepare($sql_project);
 if ($search_project_id) {
     $search_pattern_project = "%$search_project_id%";
-    $stmt->bind_param("ss", $pro_ID, $search_pattern_project);
+    $stmt->bind_param("ssssss", $pro_ID, $search_pattern_project, $search_pattern_project, $search_pattern_project, $search_pattern_project, $search_pattern_project);
 } else {
     $stmt->bind_param("s", $pro_ID);
 }
@@ -923,13 +1049,13 @@ $stmt->close();
             <li style="margin-bottom:18px;"><a href="#basic-info">基本資料</a></li>
             <li style="margin-bottom:18px;"><a href="#education">學歷</a></li>
             <li style="margin-bottom:18px;"><a href="#expertise">專長</a></li>
-            <li style="margin-bottom:18px;"><a href="#journal">期刊論文</a></li>
-            <li style="margin-bottom:18px;"><a href="#conference">會議論文</a></li>
             <li style="margin-bottom:18px;"><a href="#experience">經歷</a></li>
             <li style="margin-bottom:18px;"><a href="#courses">課程管理</a></li>
+            <li style="margin-bottom:18px;"><a href="#journal">期刊論文</a></li>
+            <li style="margin-bottom:18px;"><a href="#conference">會議論文</a></li>
+            <li style="margin-bottom:18px;"><a href="#project">專案</a></li>
             <li style="margin-bottom:18px;"><a href="#award">獎項</a></li>
             <li style="margin-bottom:18px;"><a href="#lecture">演講</a></li>
-            <li style="margin-bottom:18px;"><a href="#project">專案</a></li>
         </ul>
     </div>
     <!-- 遮罩 -->
@@ -951,46 +1077,66 @@ $stmt->close();
         <div class="section" id="basic-info">
             <h2>基本資料 (含聯絡資訊)</h2>
             <form method="post" enctype="multipart/form-data">
-                <input type="hidden" name="pro_ID" value="<?php echo $professor['pro_ID']; ?>">
+                <input type="hidden" name="pro_ID" value="<?php echo htmlspecialchars($professor['pro_ID']); ?>">
                 
-                <div>
+                <div class="form-group">
+                    <label>身分：</label>
+                    <select name="role" required>
+                        <option value="系主任" <?php if($professor['role']==='系主任')echo 'selected';?>>系主任</option>
+                        <option value="榮譽特聘講座" <?php if($professor['role']==='榮譽特聘講座')echo 'selected';?>>榮譽特聘講座</option>
+                        <option value="講座教授" <?php if($professor['role']==='講座教授')echo 'selected';?>>講座教授</option>
+                        <option value="特約講座" <?php if($professor['role']==='特約講座')echo 'selected';?>>特約講座</option>
+                        <option value="特聘教授" <?php if($professor['role']==='特聘教授')echo 'selected';?>>特聘教授</option>
+                        <option value="專任教師" <?php if($professor['role']==='專任教師')echo 'selected';?>>專任教師</option>
+                        <option value="兼任教師" <?php if($professor['role']==='兼任教師')echo 'selected';?>>兼任教師</option>
+                        <option value="行政人員" <?php if($professor['role']==='行政人員')echo 'selected';?>>行政人員</option>
+                        <option value="退休教師" <?php if($professor['role']==='退休教師')echo 'selected';?>>退休教師</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label>姓名：</label>
                     <input type="text" name="name" value="<?php echo htmlspecialchars($professor['name'] ?? '-'); ?>" required>
                 </div>
                 
-                <div>
+                <div class="form-group">
                     <label>職位：</label>
                     <input type="text" name="position" value="<?php echo htmlspecialchars($professor['position'] ?? '-'); ?>" required>
                 </div>
                 
-                <div>
+                <div class="form-group">
                     <label>自介：</label>
                     <textarea name="introduction" rows="4"><?php echo htmlspecialchars($professor['introduction'] ?? '-'); ?></textarea>
                 </div>
 
-                <div>
+                <div class="form-group">
                     <label>信箱：</label>
                     <input type="email" name="email" value="<?php echo htmlspecialchars($professor['email'] ?? '-'); ?>">
                 </div>
                 
-                <div>
+                <div class="form-group">
                     <label>辦公室電話：</label>
                     <input type="tel" name="phone" value="<?php echo htmlspecialchars($professor['phone'] ?? '-'); ?>">
                 </div>
 
-                <div>
+                <div class="form-group">
                     <label>辦公室位置：</label>
                     <input type="text" name="office" value="<?php echo htmlspecialchars($professor['office'] ?? '-'); ?>">
                 </div>
                 
-                <div>
+                <div class="form-group">
                     <label>照片：</label>
-                    <input type="file" name="photo" accept="image/*">
-                    <?php if ($professor['photo']): ?>
-                        <img src="<?php echo htmlspecialchars($professor['photo']); ?>" alt="教授照片" style="max-width: 200px;">
-                    <?php else: ?>
-                        <span>無照片</span>
-                    <?php endif; ?>
+                    <input type="file" name="photo" accept="image/*" id="photoInput">
+                    <span id="photoPreviewWrapper">
+                        <?php if ($professor['photo'] && $professor['photo'] !== 'uploads/none.jpg'): ?>
+                            <img src="<?php echo htmlspecialchars($professor['photo']); ?>" alt="教授照片" style="max-width: 200px;" id="photoPreviewImg">
+                            <button type="button" id="removePhotoBtn" style="margin-left:10px;background:#dc3545;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;">移除照片</button>
+                        <?php else: ?>
+                            <img src="uploads/none.jpg" alt="無照片" style="max-width: 200px;" id="photoPreviewImg">
+                            <button type="button" id="removePhotoBtn" style="margin-left:10px;background:#dc3545;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;">移除照片</button>
+                        <?php endif; ?>
+                    </span>
+                    <input type="hidden" name="remove_photo" id="removePhotoFlag" value="0">
                 </div>
                 
                 <button type="submit" name="update_basic">更新基本資料</button>
@@ -1003,10 +1149,10 @@ $stmt->close();
             <!-- 搜尋功能 -->
             <form method="get" class="search-form">
                 <input type="hidden" name="id" value="<?php echo $pro_ID; ?>">
-                <input type="text" name="search_edu_id" placeholder="搜尋學歷ID" value="<?php echo htmlspecialchars($search_edu_id ?? ''); ?>">
+                <input type="text" name="search_edu_id" placeholder="搜尋學歷ID (B開頭) 或 關鍵字" value="<?php echo htmlspecialchars($search_edu_id ?? ''); ?>">
                 <button type="submit">搜尋</button>
                 <?php if (!empty($search_edu_id)): ?>
-                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search">清除搜尋</a>
+                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search" title="清除搜尋並顯示所有學歷">清除搜尋</a>
                 <?php endif; ?>
             </form>
             <form method="post">
@@ -1080,10 +1226,10 @@ $stmt->close();
             <!-- 搜尋功能 -->
             <form method="get" class="search-form">
                 <input type="hidden" name="id" value="<?php echo $pro_ID; ?>">
-                <input type="text" name="search_expertise_id" placeholder="搜尋專長ID" value="<?php echo htmlspecialchars($search_expertise_id ?? ''); ?>">
+                <input type="text" name="search_expertise_id" placeholder="搜尋專長ID (C開頭) 或 關鍵字" value="<?php echo htmlspecialchars($search_expertise_id ?? ''); ?>">
                 <button type="submit">搜尋</button>
                 <?php if (!empty($search_expertise_id)): ?>
-                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search">清除搜尋</a>
+                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search" title="清除搜尋並顯示所有專長">清除搜尋</a>
                 <?php endif; ?>
             </form>
             <form method="post">
@@ -1141,16 +1287,249 @@ $stmt->close();
             </div>
         </div>
 
+        <!-- 經歷區塊 -->
+        <div class="section" id="experience">
+            <h2>經歷</h2>
+            <!-- 搜尋功能 -->
+            <form method="get" class="search-form">
+                <input type="hidden" name="id" value="<?php echo $pro_ID; ?>">
+                <input type="text" name="search_experience_id" placeholder="搜尋經歷ID (D開頭) 或 關鍵字" value="<?php echo htmlspecialchars($search_experience_id ?? ''); ?>">
+                <button type="submit">搜尋</button>
+                <?php if (!empty($search_experience_id)): ?>
+                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search" title="清除搜尋並顯示所有經歷">清除搜尋</a>
+                <?php endif; ?>
+            </form>
+            <form method="post">
+                <input type="hidden" name="pro_ID" value="<?php echo $professor['pro_ID']; ?>">
+                <div>
+                    <label>類別：</label>
+                    <select name="category" required>
+                        <option value="校內">校內</option>
+                        <option value="校外">校外</option>
+                    </select>
+                </div>
+                <div>
+                    <label>單位：</label>
+                    <input type="text" name="department" required>
+                </div>
+                <div>
+                    <label>職位：</label>
+                    <input type="text" name="position" required>
+                </div>
+                <button type="submit" name="add_experience">新增經歷</button>
+            </form>
+            <details>
+                <summary>展開經歷列表</summary>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>經歷ID</th>
+                        <th>類別</th>
+                        <th>單位</th>
+                        <th>職位</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php while ($row = $result_experience->fetch_assoc()): ?>
+                <tr>
+                    <td><?php echo htmlspecialchars($row['experience_ID'] ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($row['category'] ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($row['department'] ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($row['position'] ?? '-'); ?></td>
+                    <td>
+                        <button onclick="editExperience('<?php echo htmlspecialchars($row['experience_ID'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['category'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['department'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['position'] ?? '-'); ?>')" class="edit-btn">編輯</button>
+                        <form method="post" style="display: inline;">
+                            <input type="hidden" name="table" value="experience">
+                            <input type="hidden" name="id_field" value="experience_ID">
+                            <input type="hidden" name="id_value" value="<?php echo $row['experience_ID']; ?>">
+                            <button type="submit" name="delete_data" class="delete-btn" onclick="return confirm('確定要刪除這筆資料嗎？')">刪除</button>
+                        </form>
+                    </td>
+                               </tr>
+                <?php endwhile; ?>
+                </tbody>
+            </table>
+            </details>
+        </div>
+
+        <!-- 編輯經歷的彈出視窗 -->
+        <div id="editExperienceModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('editExperienceModal')">&times;</span>
+                <h2>編輯經歷</h2>
+                <form method="post">
+                    <input type="hidden" name="experience_ID" id="edit_experience_ID">
+                    <div class="form-group">
+                        <label>類別：</label>
+                        <select name="category" id="edit_experience_category" required>
+                            <option value="校內">校內</option>
+                            <option value="校外">校外</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>單位：</label>
+                        <input type="text" name="department" id="edit_experience_department" required>
+                    </div>
+                    <div class="form-group">
+                        <label>職位：</label>
+                        <input type="text" name="position" id="edit_experience_position" required>
+                    </div>
+                    <button type="submit" name="update_experience">更新經歷</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 課程管理區塊 -->
+        <div class="section" id="courses">
+            <h2>課程管理</h2>
+            <!-- 搜尋功能 -->
+            <form method="get" class="search-form">
+                <input type="hidden" name="id" value="<?php echo $pro_ID; ?>">
+                <input type="text" name="search_id" placeholder="搜尋課程ID (E開頭) 或 關鍵字" value="<?php echo htmlspecialchars($search_id ?? ''); ?>">
+                <button type="submit">搜尋</button>
+                <?php if (!empty($search_id)): ?>
+                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search" title="清除搜尋並顯示所有課程">清除搜尋</a>
+                <?php endif; ?>
+            </form>
+            <!-- 新增課程表單 -->
+            <form method="post" class="add-form">
+                <input type="hidden" name="pro_ID" value="<?php echo $pro_ID; ?>">
+                <div class="form-group">
+                    <label>課程名稱：</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>開課班級：</label>
+                    <input type="text" name="class" required>
+                </div>
+                <div class="form-group">
+                    <label>上課時間：</label>
+                    <select name="day" required>
+                        <option value="">選擇星期</option>
+                        <option value="1">星期一</option>
+                        <option value="2">星期二</option>
+                        <option value="3">星期三</option>
+                        <option value="4">星期四</option>
+                        <option value="5">星期五</option>
+                        <option value="6">星期六</option>
+                        <option value="7">星期日</option>
+                    </select>
+                    <div style="display:inline-block;margin-left:10px;">
+                        <?php
+                        $periods = [
+                            '1' => '第1節',
+                            '2' => '第2節',
+                            '3' => '第3節',
+                            '4' => '第4節',
+                            '5' => '第5節',
+                            '6' => '第6節',
+                            '7' => '第7節',
+                            '8' => '第8節',
+                            '9' => '第9節',
+                            '10' => '第10節',
+                            '11' => '第11節',
+                            '12' => '第12節',
+                            '13' => '第13節',
+                            '14' => '第14節'
+                        ];
+                        foreach ($periods as $num => $label) {
+                            echo "<label style='margin-right:8px;'><input type='checkbox' name='periods[]' value='$num'>$label</label>";
+                        }
+                        ?>
+                    </div>
+                    <input type="hidden" name="time" id="course_time">
+                    <br><small>請先選星期，再勾選可複選節次</small>
+                </div>
+                <button type="submit" name="add_course">新增課程</button>
+            </form>
+            <details>
+                <summary>展開課程列表</summary>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>課程ID</th>
+                        <th>課程名稱</th>
+                        <th>開課班級</th>
+                        <th>上課時間</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <?php while ($row = $result_courses->fetch_assoc()): ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($row['courses_ID'] ?? '-'); ?></td>
+                        <td><?php echo htmlspecialchars($row['name'] ?? '-'); ?></td>
+                        <td><?php echo htmlspecialchars($row['class'] ?? '-'); ?></td>
+                        <td>
+                            <?php
+                            $times = explode(',', $row['time'] ?? '');
+                            if (empty($times) || ($times[0] === '-' && count($times) === 1)) {
+                                echo '-';
+                            } else {
+                                foreach ($times as $time) {
+                                    if (strlen($time) >= 2) {
+                                        $day = intval($time[0]); // 星期幾
+                                        $period = intval(substr($time, 1)); // 第幾節
+                                        $day_names = ['', '一', '二', '三', '四', '五', '六', '日'];
+                                        echo "星期{$day_names[$day]} 第{$period}節<br>";
+                                    } else if ($time === '-') {
+                                        echo '-';
+                                    }
+                                }
+                            }
+                            ?>
+                        </td>
+                        <td>
+                            <button onclick="editCourse('<?php echo htmlspecialchars($row['courses_ID'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['name'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['class'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['time'] ?? '-'); ?>')" class="edit-btn">編輯</button>
+                            <form method="post" style="display: inline;">
+                                <input type="hidden" name="courses_ID" value="<?php echo $row['courses_ID']; ?>">
+                                <button type="submit" name="delete_course" class="delete-btn" onclick="return confirm('確定要刪除這門課程嗎？')">刪除</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
+            </details>
+        </div>
+
+        <!-- 編輯課程的彈出視窗 -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>編輯課程</h2>
+                <form method="post">
+                    <input type="hidden" name="courses_ID" id="edit_courses_ID">
+                    <div class="form-group">
+                        <label>課程名稱：</label>
+                        <input type="text" name="name" id="edit_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>開課班級：</label>
+                        <input type="text" name="class" id="edit_class" required>
+                    </div>
+                    <div class="form-group">
+                        <label>上課時間：</label>
+                        <input type="text" name="time" id="edit_time" required>
+                        <small>格式：星期(1-7)節次(1-13)，例如：211 表示星期二第11節</small>
+                    </div>
+                    <button type="submit" name="update_course">更新課程</button>
+                </form>
+            </div>
+        </div>
+
         <!-- 期刊論文區塊 -->
         <div class="section" id="journal">
             <h2>期刊論文</h2>
             <!-- 搜尋功能 -->
             <form method="get" class="search-form">
                 <input type="hidden" name="id" value="<?php echo $pro_ID; ?>">
-                <input type="text" name="search_jour_id" placeholder="搜尋期刊ID" value="<?php echo htmlspecialchars($search_jour_id ?? ''); ?>">
+                <input type="text" name="search_jour_id" placeholder="搜尋期刊ID (F開頭) 或 關鍵字" value="<?php echo htmlspecialchars($search_jour_id ?? ''); ?>">
                 <button type="submit">搜尋</button>
                 <?php if (!empty($search_jour_id)): ?>
-                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search">清除搜尋</a>
+                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search" title="清除搜尋並顯示所有期刊論文">清除搜尋</a>
                 <?php endif; ?>
             </form>
             <form method="post">
@@ -1264,7 +1643,7 @@ $stmt->close();
             <!-- 搜尋功能 -->
             <form method="get" class="search-form">
                 <input type="hidden" name="id" value="<?php echo $pro_ID; ?>">
-                <input type="text" name="search_conf_id" placeholder="搜尋會議ID" value="<?php echo htmlspecialchars($search_conf_id ?? ''); ?>">
+                <input type="text" name="search_conf_id" placeholder="搜尋會議ID (G開頭) 或 關鍵字" value="<?php echo htmlspecialchars($search_conf_id ?? ''); ?>">
                 <button type="submit">搜尋</button>
                 <?php if (!empty($search_conf_id)): ?>
                     <a href="?id=<?php echo $pro_ID; ?>" class="clear-search">清除搜尋</a>
@@ -1375,62 +1754,71 @@ $stmt->close();
             </div>
         </div>
 
-        <!-- 經歷區塊 -->
-        <div class="section" id="experience">
-            <h2>經歷</h2>
+        <!-- 專案區塊 -->
+        <div class="section" id="project">
+            <h2>專案</h2>
             <!-- 搜尋功能 -->
             <form method="get" class="search-form">
                 <input type="hidden" name="id" value="<?php echo $pro_ID; ?>">
-                <input type="text" name="search_experience_id" placeholder="搜尋經歷ID" value="<?php echo htmlspecialchars($search_experience_id ?? ''); ?>">
+                <input type="text" name="search_project_id" placeholder="搜尋專案ID (K開頭) 或 關鍵字" value="<?php echo htmlspecialchars($search_project_id ?? ''); ?>">
                 <button type="submit">搜尋</button>
-                <?php if (!empty($search_experience_id)): ?>
-                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search">清除搜尋</a>
+                <?php if (!empty($search_project_id)): ?>
+                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search" title="清除搜尋並顯示所有專案">清除搜尋</a>
                 <?php endif; ?>
             </form>
             <form method="post">
                 <input type="hidden" name="pro_ID" value="<?php echo $professor['pro_ID']; ?>">
                 <div>
-                    <label>類別：</label>
-                    <select name="category" required>
-                        <option value="校內">校內</option>
-                        <option value="校外">校外</option>
-                    </select>
+                    <label>計畫類別：</label>
+                    <input type="text" name="category">
                 </div>
                 <div>
-                    <label>單位：</label>
-                    <input type="text" name="department" required>
+                    <label>計畫名稱：</label>
+                    <input type="text" name="name" required>
                 </div>
                 <div>
-                    <label>職位：</label>
-                    <input type="text" name="position" required>
+                    <label>日期：</label>
+                    <input type="text" name="date">
                 </div>
-                <button type="submit" name="add_experience">新增經歷</button>
+                <div>
+                    <label>計畫編號：</label>
+                    <input type="text" name="number">
+                </div>
+                <div>
+                    <label>計畫角色：</label>
+                    <input type="text" name="role">
+                </div>
+                <button type="submit" name="add_project">新增專案</button>
             </form>
             <details>
-                <summary>展開經歷列表</summary>
+                <summary>展開專案列表</summary>
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>經歷ID</th>
-                        <th>類別</th>
-                        <th>單位</th>
-                        <th>職位</th>
+                        <th>專案ID</th>
+                        <th>計畫類別</th>
+                        <th>計畫名稱</th>
+                        <th>日期</th>
+                        <th>計畫編號</th>
+                        <th>計畫角色</th>
                         <th>操作</th>
                     </tr>
                 </thead>
                 <tbody>
-                <?php while ($row = $result_experience->fetch_assoc()): ?>
+                <?php while ($row = $result_project->fetch_assoc()): ?>
                 <tr>
-                    <td><?php echo htmlspecialchars($row['experience_ID'] ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($row['project_ID'] ?? '-'); ?></td>
                     <td><?php echo htmlspecialchars($row['category'] ?? '-'); ?></td>
-                    <td><?php echo htmlspecialchars($row['department'] ?? '-'); ?></td>
-                    <td><?php echo htmlspecialchars($row['position'] ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($row['name'] ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($row['date'] ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($row['number'] ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($row['role'] ?? '-'); ?></td>
                     <td>
-                        <button onclick="editExperience('<?php echo htmlspecialchars($row['experience_ID'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['category'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['department'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['position'] ?? '-'); ?>')" class="edit-btn">編輯</button>
+                        <button onclick="editProject('<?php echo htmlspecialchars($row['project_ID'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['category'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['name'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['date'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['number'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['role'] ?? '-'); ?>')" class="edit-btn">編輯</button>
                         <form method="post" style="display: inline;">
-                            <input type="hidden" name="table" value="experience">
-                            <input type="hidden" name="id_field" value="experience_ID">
-                            <input type="hidden" name="id_value" value="<?php echo $row['experience_ID']; ?>">
+                            <input type="hidden" name="table" value="project">
+                            <input type="hidden" name="id_field" value="project_ID">
+                            <input type="hidden" name="id_value" value="<?php echo $row['project_ID']; ?>">
                             <button type="submit" name="delete_data" class="delete-btn" onclick="return confirm('確定要刪除這筆資料嗎？')">刪除</button>
                         </form>
                     </td>
@@ -1441,181 +1829,16 @@ $stmt->close();
             </details>
         </div>
 
-        <!-- 編輯經歷的彈出視窗 -->
-        <div id="editExperienceModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeModal('editExperienceModal')">&times;</span>
-                <h2>編輯經歷</h2>
-                <form method="post">
-                    <input type="hidden" name="experience_ID" id="edit_experience_ID">
-                    <div class="form-group">
-                        <label>類別：</label>
-                        <select name="category" id="edit_experience_category" required>
-                            <option value="校內">校內</option>
-                            <option value="校外">校外</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>單位：</label>
-                        <input type="text" name="department" id="edit_experience_department" required>
-                    </div>
-                    <div class="form-group">
-                        <label>職位：</label>
-                        <input type="text" name="position" id="edit_experience_position" required>
-                    </div>
-                    <button type="submit" name="update_experience">更新經歷</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- 課程管理區塊 -->
-        <div class="section" id="courses">
-            <h2>課程管理</h2>
-            <!-- 搜尋功能 -->
-            <form method="get" class="search-form">
-                <input type="hidden" name="id" value="<?php echo $pro_ID; ?>">
-                <input type="text" name="search_id" placeholder="搜尋課程ID" value="<?php echo htmlspecialchars($search_id); ?>">
-                <button type="submit">搜尋</button>
-                <?php if ($search_id): ?>
-                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search">清除搜尋</a>
-                <?php endif; ?>
-            </form>
-            <!-- 新增課程表單 -->
-            <form method="post" class="add-form">
-                <input type="hidden" name="pro_ID" value="<?php echo $pro_ID; ?>">
-                <div class="form-group">
-                    <label>課程名稱：</label>
-                    <input type="text" name="name" required>
-                </div>
-                <div class="form-group">
-                    <label>開課班級：</label>
-                    <input type="text" name="class" required>
-                </div>
-                <div class="form-group">
-                    <label>上課時間：</label>
-                    <select name="day" required>
-                        <option value="">選擇星期</option>
-                        <option value="1">星期一</option>
-                        <option value="2">星期二</option>
-                        <option value="3">星期三</option>
-                        <option value="4">星期四</option>
-                        <option value="5">星期五</option>
-                        <option value="6">星期六</option>
-                        <option value="7">星期日</option>
-                    </select>
-                    <select name="period" required>
-                        <option value="">選擇節次</option>
-                        <?php
-                        $periods = [
-                            '1' => '08:10 - 09:00',
-                            '2' => '09:10 - 10:00',
-                            '3' => '10:10 - 11:00',
-                            '4' => '11:10 - 12:00',
-                            '5' => '13:10 - 14:00',
-                            '6' => '14:10 - 15:00',
-                            '7' => '15:10 - 16:00',
-                            '8' => '16:10 - 17:00',
-                            '9' => '17:10 - 18:00',
-                            '10' => '18:10 - 19:00',
-                            '11' => '19:10 - 20:00',
-                            '12' => '20:10 - 21:00',
-                            '13' => '21:10 - 22:00'
-                        ];
-                        foreach ($periods as $num => $time) {
-                            echo "<option value='$num'>$time</option>";
-                        }
-                        ?>
-                    </select>
-                    <input type="hidden" name="time" id="course_time">
-                </div>
-                <button type="submit" name="add_course">新增課程</button>
-            </form>
-            <details>
-                <summary>展開課程列表</summary>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>課程ID</th>
-                        <th>課程名稱</th>
-                        <th>開課班級</th>
-                        <th>上課時間</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php while ($row = $result_courses->fetch_assoc()): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($row['courses_ID'] ?? '-'); ?></td>
-                        <td><?php echo htmlspecialchars($row['name'] ?? '-'); ?></td>
-                        <td><?php echo htmlspecialchars($row['class'] ?? '-'); ?></td>
-                        <td>
-                            <?php
-                            $times = explode(',', $row['time'] ?? '');
-                            if (empty($times) || ($times[0] === '-' && count($times) === 1)) {
-                                echo '-';
-                            } else {
-                                foreach ($times as $time) {
-                                    if (strlen($time) >= 2) {
-                                        $day = intval($time[0]); // 星期幾
-                                        $period = intval(substr($time, 1)); // 第幾節
-                                        $day_names = ['', '一', '二', '三', '四', '五', '六', '日'];
-                                        echo "星期{$day_names[$day]} 第{$period}節<br>";
-                                    } else if ($time === '-') {
-                                        echo '-';
-                                    }
-                                }
-                            }
-                            ?>
-                        </td>
-                        <td>
-                            <button onclick="editCourse('<?php echo htmlspecialchars($row['courses_ID'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['name'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['class'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['time'] ?? '-'); ?>')" class="edit-btn">編輯</button>
-                            <form method="post" style="display: inline;">
-                                <input type="hidden" name="courses_ID" value="<?php echo $row['courses_ID']; ?>">
-                                <button type="submit" name="delete_course" class="delete-btn" onclick="return confirm('確定要刪除這門課程嗎？')">刪除</button>
-                            </form>
-                        </td>
-                    </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
-            </details>
-        </div>
-
-        <!-- 編輯課程的彈出視窗 -->
-        <div id="editModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2>編輯課程</h2>
-                <form method="post">
-                    <input type="hidden" name="courses_ID" id="edit_courses_ID">
-                    <div class="form-group">
-                        <label>課程名稱：</label>
-                        <input type="text" name="name" id="edit_name" required>
-                    </div>
-                    <div class="form-group">
-                        <label>開課班級：</label>
-                        <input type="text" name="class" id="edit_class" required>
-                    </div>
-                    <div class="form-group">
-                        <label>上課時間：</label>
-                        <input type="text" name="time" id="edit_time" required>
-                        <small>格式：星期(1-7)節次(1-13)，例如：211 表示星期二第11節</small>
-                    </div>
-                    <button type="submit" name="update_course">更新課程</button>
-                </form>
-            </div>
-        </div>
-
         <!-- 獎項區塊 -->
         <div class="section" id="award">
             <h2>獎項</h2>
             <!-- 搜尋功能 -->
             <form method="get" class="search-form">
                 <input type="hidden" name="id" value="<?php echo $pro_ID; ?>">
-                <input type="text" name="search_award_id" placeholder="搜尋獎項ID" value="<?php echo htmlspecialchars($search_award_id ?? ''); ?>">
+                <input type="text" name="search_award_id" placeholder="搜尋獎項ID (I開頭) 或 關鍵字" value="<?php echo htmlspecialchars($search_award_id ?? ''); ?>">
                 <button type="submit">搜尋</button>
                 <?php if (!empty($search_award_id)): ?>
-                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search">清除搜尋</a>
+                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search" title="清除搜尋並顯示所有獎項">清除搜尋</a>
                 <?php endif; ?>
             </form>
             <form method="post">
@@ -1729,10 +1952,10 @@ $stmt->close();
             <!-- 搜尋功能 -->
             <form method="get" class="search-form">
                 <input type="hidden" name="id" value="<?php echo $pro_ID; ?>">
-                <input type="text" name="search_lecture_id" placeholder="搜尋演講ID" value="<?php echo htmlspecialchars($search_lecture_id ?? ''); ?>">
+                <input type="text" name="search_lecture_id" placeholder="搜尋演講ID (J開頭) 或 關鍵字" value="<?php echo htmlspecialchars($search_lecture_id ?? ''); ?>">
                 <button type="submit">搜尋</button>
                 <?php if (!empty($search_lecture_id)): ?>
-                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search">清除搜尋</a>
+                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search" title="清除搜尋並顯示所有演講">清除搜尋</a>
                 <?php endif; ?>
             </form>
             <form method="post">
@@ -1810,113 +2033,6 @@ $stmt->close();
             </div>
         </div>
 
-        <!-- 專案區塊 -->
-        <div class="section" id="project">
-            <h2>專案</h2>
-            <!-- 搜尋功能 -->
-            <form method="get" class="search-form">
-                <input type="hidden" name="id" value="<?php echo $pro_ID; ?>">
-                <input type="text" name="search_project_id" placeholder="搜尋專案ID" value="<?php echo htmlspecialchars($search_project_id ?? ''); ?>">
-                <button type="submit">搜尋</button>
-                <?php if (!empty($search_project_id)): ?>
-                    <a href="?id=<?php echo $pro_ID; ?>" class="clear-search">清除搜尋</a>
-                <?php endif; ?>
-            </form>
-            <form method="post">
-                <input type="hidden" name="pro_ID" value="<?php echo $professor['pro_ID']; ?>">
-                <div>
-                    <label>計畫類別：</label>
-                    <input type="text" name="category">
-                </div>
-                <div>
-                    <label>計畫名稱：</label>
-                    <input type="text" name="name" required>
-                </div>
-                <div>
-                    <label>日期：</label>
-                    <input type="text" name="date">
-                </div>
-                <div>
-                    <label>計畫編號：</label>
-                    <input type="text" name="number">
-                </div>
-                <div>
-                    <label>計畫角色：</label>
-                    <input type="text" name="role">
-                </div>
-                <button type="submit" name="add_project">新增專案</button>
-            </form>
-            <details>
-                <summary>展開專案列表</summary>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>專案ID</th>
-                        <th>計畫類別</th>
-                        <th>計畫名稱</th>
-                        <th>日期</th>
-                        <th>計畫編號</th>
-                        <th>計畫角色</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                <?php while ($row = $result_project->fetch_assoc()): ?>
-                <tr>
-                    <td><?php echo htmlspecialchars($row['project_ID'] ?? '-'); ?></td>
-                    <td><?php echo htmlspecialchars($row['category'] ?? '-'); ?></td>
-                    <td><?php echo htmlspecialchars($row['name'] ?? '-'); ?></td>
-                    <td><?php echo htmlspecialchars($row['date'] ?? '-'); ?></td>
-                    <td><?php echo htmlspecialchars($row['number'] ?? '-'); ?></td>
-                    <td><?php echo htmlspecialchars($row['role'] ?? '-'); ?></td>
-                    <td>
-                        <button onclick="editProject('<?php echo htmlspecialchars($row['project_ID'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['category'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['name'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['date'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['number'] ?? '-'); ?>', '<?php echo htmlspecialchars($row['role'] ?? '-'); ?>')" class="edit-btn">編輯</button>
-                        <form method="post" style="display: inline;">
-                            <input type="hidden" name="table" value="project">
-                            <input type="hidden" name="id_field" value="project_ID">
-                            <input type="hidden" name="id_value" value="<?php echo $row['project_ID']; ?>">
-                            <button type="submit" name="delete_data" class="delete-btn" onclick="return confirm('確定要刪除這筆資料嗎？')">刪除</button>
-                        </form>
-                    </td>
-                </tr>
-                <?php endwhile; ?>
-                </tbody>
-            </table>
-            </details>
-        </div>
-
-        <!-- 編輯專案的彈出視窗 -->
-        <div id="editProjectModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeModal('editProjectModal')">&times;</span>
-                <h2>編輯專案</h2>
-                <form method="post">
-                    <input type="hidden" name="project_ID" id="edit_project_ID">
-                    <div class="form-group">
-                        <label>計畫類別：</label>
-                        <input type="text" name="category" id="edit_project_category">
-                    </div>
-                    <div class="form-group">
-                        <label>計畫名稱：</label>
-                        <input type="text" name="name" id="edit_project_name" required>
-                    </div>
-                    <div class="form-group">
-                        <label>日期：</label>
-                        <input type="text" name="date" id="edit_project_date">
-                    </div>
-                    <div class="form-group">
-                        <label>計畫編號：</label>
-                        <input type="text" name="number" id="edit_project_number">
-                    </div>
-                    <div class="form-group">
-                        <label>計畫角色：</label>
-                        <input type="text" name="role" id="edit_project_role">
-                    </div>
-                    <button type="submit" name="update_project">更新專案</button>
-                </form>
-            </div>
-        </div>
-
         <script>
             // 處理新增課程的時間組合
             document.querySelector('.add-form').addEventListener('submit', function(e) {
@@ -1937,7 +2053,17 @@ $stmt->close();
             // 關閉彈出視窗 (通用函數)
             function closeModal(modalId) {
                 document.getElementById(modalId).style.display = 'none';
+                // 不做 window.location.hash = ''，這樣 hash 不會被清空，頁面會維持在原區塊
             }
+            // 讓所有 .close 按鈕都能關閉對應的 modal
+            document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('.modal .close').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var modal = btn.closest('.modal');
+                        if (modal) modal.style.display = 'none';
+                    });
+                });
+            });
 
             // 處理編輯學歷的彈出視窗
             function editEducation(id, department, degree) {
@@ -2025,6 +2151,94 @@ $stmt->close();
                         document.getElementById('sideNavMask').style.display = 'none';
                     }
                 };
+            });
+
+            // 照片預覽與移除邏輯
+            const photoInput = document.getElementById('photoInput');
+            const photoPreviewImg = document.getElementById('photoPreviewImg');
+            const removePhotoBtn = document.getElementById('removePhotoBtn');
+            const removePhotoFlag = document.getElementById('removePhotoFlag');
+
+            if (removePhotoBtn) {
+                removePhotoBtn.onclick = function() {
+                    photoPreviewImg.src = 'uploads/none.jpg';
+                    removePhotoFlag.value = '1';
+                    // 清空 file input
+                    if (photoInput) photoInput.value = '';
+                };
+            }
+            if (photoInput) {
+                photoInput.onchange = function(e) {
+                    if (photoInput.files && photoInput.files[0]) {
+                        const reader = new FileReader();
+                        reader.onload = function(ev) {
+                            photoPreviewImg.src = ev.target.result;
+                        };
+                        reader.readAsDataURL(photoInput.files[0]);
+                        removePhotoFlag.value = '0'; // 選新檔案時自動取消移除標記
+                    }
+                };
+            }
+
+            // 1. 預設所有 details 關閉
+            window.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('details').forEach(function(d) {
+                    d.open = false;
+                });
+
+                // 2. 若有搜尋參數，對應區塊自動展開並定位
+                const searchFields = [
+                    { field: 'search_edu_id', section: 'education' },
+                    { field: 'search_expertise_id', section: 'expertise' },
+                    { field: 'search_experience_id', section: 'experience' },
+                    { field: 'search_id', section: 'courses' },
+                    { field: 'search_jour_id', section: 'journal' },
+                    { field: 'search_conf_id', section: 'conference' },
+                    { field: 'search_project_id', section: 'project' },
+                    { field: 'search_award_id', section: 'award' },
+                    { field: 'search_lecture_id', section: 'lecture' }
+                ];
+                let found = false;
+                searchFields.forEach(function(item) {
+                    const url = new URL(window.location.href);
+                    if (url.searchParams.get(item.field)) {
+                        const section = document.getElementById(item.section);
+                        if (section) {
+                            const details = section.querySelector('details');
+                            if (details) details.open = true;
+                            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            window.location.hash = '#' + item.section;
+                            found = true;
+                        }
+                    }
+                });
+                // 3. 若按下清除搜尋，對應區塊自動展開
+                document.querySelectorAll('.clear-search').forEach(function(a) {
+                    a.addEventListener('click', function(e) {
+                        // 等待頁面刷新後自動展開與定位
+                        const href = a.getAttribute('href');
+                        if (href && href.indexOf('?') !== -1) {
+                            // 取得區塊 id
+                            const section = a.closest('.section');
+                            if (section) {
+                                // 利用 localStorage 傳遞要展開的區塊 id
+                                localStorage.setItem('expandSection', section.id);
+                            }
+                        }
+                    });
+                });
+                // 頁面載入時自動展開剛剛清除的區塊
+                const expandSection = localStorage.getItem('expandSection');
+                if (expandSection) {
+                    const section = document.getElementById(expandSection);
+                    if (section) {
+                        const details = section.querySelector('details');
+                        if (details) details.open = true;
+                        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        window.location.hash = '#' + expandSection;
+                    }
+                    localStorage.removeItem('expandSection');
+                }
             });
         </script>
     </div>
