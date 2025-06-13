@@ -9,26 +9,37 @@ if (!isset($_SESSION["username"])) {
 // 新增教授功能
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['add_professor'])) {
     $pro_ID = trim($_POST['pro_ID']);
-    $role = isset($_POST['role']) ? trim($_POST['role']) : '';
-    $name = trim($_POST['name']);
-    $position = trim($_POST['position']);
-    $introduction = trim($_POST['introduction']);
-    $email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
-    $office = trim($_POST['office']);
-    $photo = '';
-    // 處理圖片上傳
-    if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
-        $ext = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
-        $photo = 'uploads/' . uniqid('prof_', true) . '.' . $ext;
-        move_uploaded_file($_FILES['photo']['tmp_name'], $photo);
-    } else {
-        $photo = 'uploads/none.jpg'; // 預設頭像
-    }
-    $stmt = $conn->prepare("INSERT INTO professor (pro_ID, role, name, position, introduction, email, phone, office, photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssssssss", $pro_ID, $role, $name, $position, $introduction, $email, $phone, $office, $photo);
+    // 新增前先檢查ID是否重複
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM professor WHERE pro_ID = ?");
+    $stmt->bind_param("s", $pro_ID);
     $stmt->execute();
+    $stmt->bind_result($count);
+    $stmt->fetch();
     $stmt->close();
+    if ($count > 0) {
+        $error = "教授ID已存在，請更換其他ID。";
+    } else {
+        $role = isset($_POST['role']) ? trim($_POST['role']) : '';
+        $name = trim($_POST['name']);
+        $position = trim($_POST['position']);
+        $introduction = trim($_POST['introduction']);
+        $email = trim($_POST['email']);
+        $phone = trim($_POST['phone']);
+        $office = trim($_POST['office']);
+        $photo = '';
+        // 處理圖片上傳
+        if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+            $ext = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
+            $photo = 'uploads/' . uniqid('prof_', true) . '.' . $ext;
+            move_uploaded_file($_FILES['photo']['tmp_name'], $photo);
+        } else {
+            $photo = 'uploads/none.jpg'; // 預設頭像
+        }
+        $stmt = $conn->prepare("INSERT INTO professor (pro_ID, role, name, position, introduction, email, phone, office, photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssssssss", $pro_ID, $role, $name, $position, $introduction, $email, $phone, $office, $photo);
+        $stmt->execute();
+        $stmt->close();
+    }
 }
 
 // 處理刪除教授及其所有資料

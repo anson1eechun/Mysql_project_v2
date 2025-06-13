@@ -1061,7 +1061,13 @@ $stmt->close();
     <!-- 遮罩 -->
     <div id="sideNavMask" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.15);z-index:2099;"></div>
     <!-- 返回 dashboard 按鈕 -->
-    <a href="dashboard.php" style="position:fixed;top:18px;right:18px;z-index:2000;padding:8px 18px;background:#667eea;color:#fff;border:none;border-radius:6px;text-decoration:none;">返回</a>
+    <?php
+    $back_url = 'dashboard.php';
+    if (isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], 'dashboard.php') !== false) {
+        $back_url = $_SERVER['HTTP_REFERER'];
+    }
+    ?>
+    <a href="<?php echo htmlspecialchars($back_url); ?>" style="position:fixed;top:18px;right:18px;z-index:2000;padding:8px 18px;background:#667eea;color:#fff;border:none;border-radius:6px;text-decoration:none;">返回</a>
     <div class="container">
         <?php if (isset($message)): ?>
             <div class="message"><?php echo $message; ?></div>
